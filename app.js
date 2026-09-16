@@ -1033,33 +1033,33 @@ document.querySelectorAll("[data-back-to-selector]").forEach((btn) => {
 
 /* =========================================================================
    MODE: BUILD NEW PRICELIST
-   New customer, no existing Odoo export — upload their price list PDF
-   (typed or scanned/handwritten), transcribe every row by hand while
-   looking at the rendered PDF pages (no OCR is attempted), match each row
-   against the live Olympic Paints product catalog (catalog-data.js +
-   catalog-match.js — the browser port of the Phase 8 Python matching
-   engine, hand-verified against Kelly's Hardware and Acornhoek Hardware's
-   real builds), and produce a from-scratch Odoo pricelist import Excel with
-   freshly-minted, stable External IDs. Anything that can't be safely
-   auto-matched is flagged REVIEW NEEDED / NOT FOUND rather than guessed —
-   same standing rule as every other phase of this project.
+   New customer, no existing Odoo export — upload their typed/digital price
+   list PDF and this reads it, matches every row against the live Olympic
+   Paints product catalog (catalog-data.js + catalog-match.js — the browser
+   port of the Phase 8 Python matching engine, hand-verified against Kelly's
+   Hardware and Acornhoek Hardware's real builds), and produces a
+   from-scratch Odoo pricelist import Excel with freshly-minted, stable
+   External IDs — fully automatically, no manual transcription step.
+   Anything that can't be safely auto-matched is flagged REVIEW NEEDED /
+   NOT FOUND rather than guessed — same standing rule as every other phase
+   of this project. Scanned/handwritten PDFs (and PDFs with handwritten
+   price corrections on top of printed prices) are deliberately NOT handled
+   here — this mode only trusts the PDF's printed text layer and has no way
+   to see or verify handwriting, so a handwritten override could otherwise
+   be silently missed. Those go to the user's chat with Claude instead,
+   where they're transcribed and verified by eye before matching.
    ========================================================================= */
-
-const PDF_RENDER_SCALE = 2.2;
 
 const stateB = {
   pdfFile: null,
-  pdfDoc: null,
   customer: "",
   account: "",
-  rows: [],
   results: null,
   displayRows: null,
-  zoom: 1.4,
 };
 
 function goToStepB(n) {
-  for (let i = 1; i <= 3; i++) {
+  for (let i = 1; i <= 2; i++) {
     $(`panel-b${i}`).classList.toggle("active", i === n);
     const pill = $(`b-step-pill-${i}`);
     pill.classList.toggle("active", i === n);
@@ -1095,53 +1095,6 @@ function splitLeadingPack(label) {
   return { pack: `${m[1]}${m[2]}`.toUpperCase(), product: m[3].trim() };
 }
 
-async function loadAndRenderPdf(file) {
-  const buf = await file.arrayBuffer();
-  const pdf = await pdfjsLib.getDocument({ data: buf }).promise;
-  stateB.pdfDoc = pdf;
-
-  const container = $("b-pdf-pages");
-  container.innerHTML = "";
-  $("b-page-count").textContent = `${pdf.numPages} page${pdf.numPages === 1 ? "" : "s"}`;
-
-  for (let pageNum = 1; pageNum <= pdf.numPages; pageNum++) {
-    const page = await pdf.getPage(pageNum);
-    const viewport = page.getViewport({ scale: PDF_RENDER_SCALE });
-    const canvas = document.createElement("canvas");
-    canvas.className = "pdf-page-canvas";
-    canvas.width = viewport.width;
-    canvas.height = viewport.height;
-    const ctx = canvas.getContext("2d");
-    await page.render({ canvasContext: ctx, viewport }).promise;
-
-    const wrap = document.createElement("div");
-    wrap.className = "pdf-page-wrap";
-    const label = document.createElement("p");
-    label.className = "pdf-page-label";
-    label.textContent = `Page ${pageNum} of ${pdf.numPages}`;
-    wrap.appendChild(label);
-    wrap.appendChild(canvas);
-    container.appendChild(wrap);
-  }
-  applyZoom();
-}
-
-function applyZoom() {
-  $("b-zoom-pct").textContent = `${Math.round(stateB.zoom * 100)}%`;
-  document.querySelectorAll("#b-pdf-pages .pdf-page-canvas").forEach((c) => {
-    c.style.width = `${stateB.zoom * 100}%`;
-  });
-}
-
-$("b-zoom-in").addEventListener("click", () => {
-  stateB.zoom = Math.min(3, Math.round((stateB.zoom + 0.2) * 10) / 10);
-  applyZoom();
-});
-$("b-zoom-out").addEventListener("click", () => {
-  stateB.zoom = Math.max(0.4, Math.round((stateB.zoom - 0.2) * 10) / 10);
-  applyZoom();
-});
-
 $("b-btn-continue").addEventListener("click", async () => {
   clearBanner();
   const btn = $("b-btn-continue");
@@ -1152,34 +1105,38 @@ $("b-btn-continue").addEventListener("click", async () => {
     showBanner("Enter the customer name, account number, and upload their PDF before continuing.", "error");
     return;
   }
+  if (!window.NewPricelistPipeline) {
+    showBanner("The product catalog didn't load — check your connection and reload the page.", "error");
+    return;
+  }
   stateB.customer = customer;
   stateB.account = account;
 
   btn.disabled = true;
-  btn.innerHTML = `<span class="spinner"></span> Opening PDF…`;
+  btn.innerHTML = `<span class="spinner"></span> Reading PDF…`;
   try {
-    await loadAndRenderPdf(stateB.pdfFile);
-
     const { rows, hasText } = await extractPdfRows(stateB.pdfFile);
-    stateB.rows = [];
-    if (hasText && rows.length) {
-      for (const r of rows) {
-        const { pack, product } = splitLeadingPack(r.label);
-        stateB.rows.push({ product, pack, printed: r.price, special: "" });
-      }
+
+    if (!rows.length) {
       showBanner(
-        `Pre-filled ${rows.length} row${rows.length === 1 ? "" : "s"} from the PDF's text layer — check every ` +
-        `row against the page images, especially any with a handwritten special price to add.`,
-        "info"
-      );
-    } else {
-      showBanner(
-        "No selectable text found in this PDF — it looks scanned or handwritten. Zoom into the pages on the " +
-        "left and type each row in by hand on the right.",
+        "Couldn't find readable price rows in this PDF — it looks scanned, handwritten, or laid out in a way " +
+        "this automatic mode can't parse. Attach this PDF directly in your chat with Claude instead: it will " +
+        "transcribe every row (zooming into any handwriting) and build the Excel for you.",
         "warn"
       );
+      return;
     }
-    renderBRowsTable();
+
+    let flat = [];
+    for (const r of rows) {
+      const { pack, product } = splitLeadingPack(r.label);
+      flat = flat.concat(window.NewPricelistPipeline.processRow({ product, pack, printed: r.price }));
+    }
+    flat = window.NewPricelistPipeline.mergeDuplicates(flat);
+    flat.sort((a, b) => String(a.name).localeCompare(String(b.name)));
+
+    stateB.results = flat;
+    renderBResults();
     goToStepB(2);
   } catch (err) {
     showBanner(err.message || String(err), "error");
@@ -1190,111 +1147,7 @@ $("b-btn-continue").addEventListener("click", async () => {
   }
 });
 
-/* ---------- Step B2: transcribe / review rows ---------- */
-
-function renderBRowsTable() {
-  const tbody = $("b-rows-tbody");
-  tbody.innerHTML = "";
-  stateB.rows.forEach((row, idx) => tbody.appendChild(buildBRowTr(row, idx)));
-  $("b-row-count").textContent = `${stateB.rows.length} row${stateB.rows.length === 1 ? "" : "s"}`;
-}
-
-function buildBRowTr(row, idx) {
-  const tr = document.createElement("tr");
-
-  const productTd = document.createElement("td");
-  const productInput = document.createElement("input");
-  productInput.className = "cell-input";
-  productInput.value = row.product;
-  productInput.placeholder = "e.g. High Gloss Enamel Black, or …Colours, or White / Cream";
-  productInput.setAttribute("aria-label", "Product / colour");
-  productInput.addEventListener("input", () => { stateB.rows[idx].product = productInput.value; });
-  productTd.appendChild(productInput);
-
-  const packTd = document.createElement("td");
-  const packInput = document.createElement("input");
-  packInput.className = "cell-input b-pack-input";
-  packInput.value = row.pack;
-  packInput.placeholder = "1L";
-  packInput.setAttribute("aria-label", "Pack size");
-  packInput.addEventListener("input", () => { stateB.rows[idx].pack = packInput.value; });
-  packTd.appendChild(packInput);
-
-  const printedTd = document.createElement("td");
-  const printedInput = document.createElement("input");
-  printedInput.type = "number";
-  printedInput.step = "0.01";
-  printedInput.className = "cell-input b-price-input";
-  printedInput.value = row.printed;
-  printedInput.setAttribute("aria-label", "Printed price");
-  printedInput.addEventListener("input", () => { stateB.rows[idx].printed = printedInput.value; });
-  printedTd.appendChild(printedInput);
-
-  const specialTd = document.createElement("td");
-  const specialInput = document.createElement("input");
-  specialInput.type = "number";
-  specialInput.step = "0.01";
-  specialInput.className = "cell-input b-price-input";
-  specialInput.value = row.special;
-  specialInput.placeholder = "—";
-  specialInput.setAttribute("aria-label", "Special / handwritten price");
-  specialInput.addEventListener("input", () => { stateB.rows[idx].special = specialInput.value; });
-  specialTd.appendChild(specialInput);
-
-  const actionTd = document.createElement("td");
-  const delBtn = document.createElement("button");
-  delBtn.className = "row-del";
-  delBtn.type = "button";
-  delBtn.setAttribute("aria-label", "Remove row");
-  delBtn.textContent = "✕";
-  delBtn.addEventListener("click", () => {
-    stateB.rows.splice(idx, 1);
-    renderBRowsTable();
-  });
-  actionTd.appendChild(delBtn);
-
-  tr.appendChild(productTd);
-  tr.appendChild(packTd);
-  tr.appendChild(printedTd);
-  tr.appendChild(specialTd);
-  tr.appendChild(actionTd);
-  return tr;
-}
-
-$("b-btn-add-row").addEventListener("click", () => {
-  stateB.rows.push({ product: "", pack: "", printed: "", special: "" });
-  renderBRowsTable();
-  const inputs = document.querySelectorAll("#b-rows-tbody tr:last-child .cell-input");
-  if (inputs.length) inputs[0].focus();
-});
-
-$("b-btn-back-1").addEventListener("click", () => goToStepB(1));
-
-$("b-btn-process").addEventListener("click", () => {
-  clearBanner();
-  const cleanRows = stateB.rows.filter((r) => (r.product || "").trim());
-  if (!cleanRows.length) {
-    showBanner("Add at least one row before matching.", "error");
-    return;
-  }
-  if (!window.NewPricelistPipeline) {
-    showBanner("The product catalog didn't load — check your connection and reload the page.", "error");
-    return;
-  }
-
-  let flat = [];
-  for (const row of cleanRows) {
-    flat = flat.concat(window.NewPricelistPipeline.processRow(row));
-  }
-  flat = window.NewPricelistPipeline.mergeDuplicates(flat);
-  flat.sort((a, b) => String(a.name).localeCompare(String(b.name)));
-
-  stateB.results = flat;
-  renderBResults();
-  goToStepB(3);
-});
-
-/* ---------- Step B3: results ---------- */
+/* ---------- Step B2: results ---------- */
 
 const B_STATUS_META = {
   matched: { label: "Matched", cls: "st-changed" },
@@ -1378,9 +1231,9 @@ function renderBResultsTable() {
 
 $("b-results-search").addEventListener("input", renderBResultsTable);
 $("b-results-filter").addEventListener("change", renderBResultsTable);
-$("b-btn-back-2").addEventListener("click", () => goToStepB(2));
+$("b-btn-back-result").addEventListener("click", () => goToStepB(1));
 
-/* ---------- Step B3: download ---------- */
+/* ---------- Step B2: download ---------- */
 
 // Same 13-column Odoo pricelist import shape, and the same
 // __import__.olympic_pricelist(_item)_<account>[_NNNN] External-ID scheme,

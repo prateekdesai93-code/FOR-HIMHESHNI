@@ -3,7 +3,7 @@
 A small, self-contained web app for Olympic Paints pricelist work. It has two modes:
 
 - **Update existing pricelist** — drop in a supplier price-update PDF and a customer's pricelist Excel export, and get back an updated Excel file with the new prices applied.
-- **Build new pricelist** — drop in a new customer's price-list PDF (typed *or* scanned/handwritten) and build a brand-new Odoo pricelist import Excel from scratch, matched row-by-row against your live product catalog.
+- **Build new pricelist** — drop in a new customer's typed/digital price-list PDF and build a brand-new Odoo pricelist import Excel from scratch, automatically, matched row-by-row against your live product catalog. One upload, one click, done — nothing to type in by hand.
 
 Everything runs **in your browser**. There is no server, no backend, and no upload — the PDF and Excel files never leave your device.
 
@@ -40,13 +40,20 @@ Customer name and account number are read from cell B2 (e.g. `Central Building S
 
 ## Mode 2: Build new pricelist
 
-For a brand-new customer you don't have an Odoo export for yet.
+For a brand-new customer you don't have an Odoo export for yet. Fully automatic for typed/digital PDFs — no manual data entry.
 
-1. **Customer & PDF** — enter the customer's name and account number, and upload their price-list PDF. Typed, scanned, and handwritten PDFs all work — this mode never attempts OCR.
-2. **Transcribe rows** — the PDF's pages are rendered as images on the left, with zoom controls, so you can read (or zoom into) any handwritten price yourself. On the right is an editable table: **Product/colour**, **Pack** (e.g. `1L`, `5L`, `20L`), **Printed price**, and **Special price** (a handwritten override, if the PDF has one). If the PDF has a real text layer, the Product/Pack/Printed columns are pre-filled automatically from it — you still need to check every row against the images and fill in any Special price column by hand. If it's scanned or handwritten, the table starts empty and you transcribe every row by hand while looking at the pages beside it.
-   - A row can be a single colour ("High Gloss Enamel Black"), a generic line ("High Gloss Enamel **Colours**" — expanded into every colour that line actually has in your Odoo catalog, at pack size), or a combined listing ("White / Cream / Brown" — split into one row per colour). All three are typed straight into the Product/colour column; the app figures out which shape it is.
-3. **Match against Odoo catalog** — every row is matched against a live snapshot of your Odoo product catalog (13,000+ product names, refreshed from your official Pricelist PDFs and stock-count exports). A row only gets auto-applied when it resolves to a name that **exactly exists** in that catalog — otherwise it's flagged **Needs review** (with up to 3 non-binding suggestions) or **Not found**, never guessed.
-4. **Result & download** — a stats grid shows how many rows were matched outright, name-corrected, generated from a "Colours" line, split from a slash-list, flagged for review, or not found. Search/filter the table, then download the Odoo pricelist import Excel.
+1. **Customer & PDF** — enter the customer's name and account number, and upload their price-list PDF, then click **Generate Excel**. That's it — one step.
+2. **Behind the scenes** — the app reads the PDF's text layer, splits every "label ... price" line into a product/colour, pack size (e.g. `1L`, `5L`, `20L`), and price, then matches each one against a live snapshot of your Odoo product catalog (13,000+ product names, refreshed from your official Pricelist PDFs and stock-count exports).
+   - A row can be a single colour ("High Gloss Enamel Black"), a generic line ("High Gloss Enamel **Colours**" — expanded into every colour that line actually has in your Odoo catalog, at that pack size), or a combined listing ("White / Cream / Brown" — split into one row per colour). The app detects which shape each PDF line is automatically.
+   - A row only gets auto-applied when it resolves to a name that **exactly exists** in that catalog — otherwise it's flagged **Needs review** (with up to 3 non-binding suggestions) or **Not found**, never guessed.
+3. **Result & download** — a stats grid shows how many rows were matched outright, name-corrected, generated from a "Colours" line, split from a slash-list, flagged for review, or not found. Search/filter the table, then download the Odoo pricelist import Excel.
+
+### Scanned or handwritten PDFs
+
+This mode deliberately does **not** attempt OCR or handle handwriting — a browser-only guess at handwriting risks a wrong price slipping into Odoo silently, which goes against this project's core rule of never guessing a price. Two cases route elsewhere instead:
+
+- **The PDF has no readable text at all** (scanned or fully handwritten) — the app finds zero price rows and shows a banner telling you to attach that PDF directly in your chat with Claude instead. Claude reads it directly (zooming into every price, including handwriting) and builds the Excel for you there — same result, just a different place.
+- **The PDF is typed but has handwritten price corrections written on top of or alongside the printed prices** — this is the more dangerous case, because the app *would* find readable rows (the printed ones) and could silently use the wrong, superseded price. There's no reliable way for the app to detect handwriting on an otherwise-typed page, so this is on you to catch: if any handwritten override appears anywhere on the sheet, upload that PDF in chat instead of using this mode.
 
 ### How matching works (build-new-pricelist mode)
 
@@ -66,12 +73,12 @@ A 13-column Odoo pricelist import Excel — `id`, `name`, `company_id`, `selecta
 
 The product catalog is a static snapshot (`catalog-data.js`) built from your official Pricelist PDFs and stock-count export. If Olympic Paints adds new products or pack sizes, that file needs refreshing — ask in the price-update-methodology project to have it rebuilt from your latest exports.
 
-## PDF requirements (update mode only)
+## PDF requirements (both modes)
 
-Update mode reads the PDF's **text layer** directly (via [pdf.js](https://mozilla.github.io/pdf.js/)) — it does not do OCR. That means:
+Both modes read the PDF's **text layer** directly (via [pdf.js](https://mozilla.github.io/pdf.js/)) — neither does OCR. That means:
 
 - ✅ Works with PDFs exported from Word, Excel, Google Docs, or any system that produces real selectable text.
-- ❌ Does not work with scanned or photographed price sheets (image-only PDFs). If you try to upload one, the app will tell you clearly rather than silently failing. (Build-new-pricelist mode handles this case by letting you transcribe from the rendered page images instead — see Mode 2 above.)
+- ❌ Does not work with scanned or photographed price sheets (image-only PDFs), and isn't safe for a typed PDF with handwritten price corrections written on top. If you try to upload a scanned/handwritten PDF to build-new-pricelist mode, the app tells you clearly and points you to the chat-based path instead (see "Scanned or handwritten PDFs" under Mode 2 above) rather than silently failing or guessing.
 
 The line-extraction heuristic looks for lines ending in a price (e.g. `1LT High Gloss Enamel Colours   84.43`). Because every real-world price sheet is laid out slightly differently, **step 2 always shows you exactly what was extracted before anything is matched**, so you can fix a misread line, delete a stray header/footer line, or add a row the parser missed, in seconds.
 
@@ -99,3 +106,4 @@ pdf.js and SheetJS are loaded from cdnjs at runtime — an internet connection i
 - The free/community build of SheetJS used here can't write cell background colors, so the downloaded Excel shows match status as text rather than colour-highlighted cells in both modes.
 - One customer at a time — there's no saved history or multi-customer batch mode. Each session starts fresh.
 - Build-new-pricelist mode's "Colours" expansion and product-line corrections only know about the lines this project has already encountered (High Gloss Enamel, Q.D Enamel, Ultimate Shine, Univ Undercoat, Master Decorators, Decor, Pick 'N Save Econo, Eclipse PVA, and others — see `catalog-match.js`'s `REAL_LINE_PREFIXES` table). A line it doesn't recognise is flagged **Needs review** with a note asking for that row to be entered individually, rather than guessed at.
+- Build-new-pricelist mode cannot read scanned or handwritten PDFs, and cannot detect handwritten price corrections layered on top of a typed PDF — see "Scanned or handwritten PDFs" under Mode 2 above. Those always go through the chat with Claude instead, never through this app.
