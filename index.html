@@ -1,1106 +1,276 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
 <head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>Price List Updater</title>
-<meta name="description" content="Update an existing customer pricelist against a supplier PDF, or build a brand new one from scratch — get a matched Odoo-import Excel back. Runs entirely in your browser." />
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Central Building Supplies (KC013) — Price List</title>
 <style>
   :root {
-    --bg: #0a0b0f;
-    --panel: #14161f;
-    --panel-2: #1a1d29;
-    --border: #262a38;
-    --border-strong: #333850;
-    --text: #f2f3f5;
-    --text-muted: #9aa0ab;
-    --text-dim: #6b7180;
-    --teal: #5eead4;
-    --teal-ink: #063a35;
-    --teal-dim: rgba(94, 234, 212, 0.12);
-    --yellow: #f5c518;
-    --yellow-dim: rgba(245, 197, 24, 0.12);
-    --danger: #f38b8b;
-    --danger-dim: rgba(243, 139, 139, 0.12);
-    --radius: 12px;
-    --radius-sm: 8px;
-    --pill: 999px;
-    --font: -apple-system, "system-ui", "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-    --mono: "SF Mono", "Cascadia Code", Consolas, monospace;
-    --shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
-    --ease: cubic-bezier(0.16, 1, 0.3, 1);
+    color-scheme: dark;
+    --bg: #0f1216;
+    --panel: #171b21;
+    --panel-2: #1e232b;
+    --border: #2a3038;
+    --text: #e8eaed;
+    --text-dim: #9aa4b2;
+    --accent: #5b9dff;
+    --green: #3ecf8e;
+    --yellow: #e8b84b;
+    --grey: #6b7280;
+    --red: #f0625a;
   }
-
   * { box-sizing: border-box; }
-
-  html, body {
+  body {
     margin: 0;
-    padding: 0;
     background: var(--bg);
     color: var(--text);
-    font-family: var(--font);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    padding: 0 16px 48px;
   }
-
-  body {
-    min-height: 100vh;
-    padding: 32px 20px 80px;
-  }
-
-  a { color: var(--teal); }
-
-  .wrap {
-    max-width: 980px;
+  header {
+    max-width: 1100px;
     margin: 0 auto;
+    padding: 28px 0 18px;
   }
-
-  /* ---------- header ---------- */
-
-  .app-header {
-    display: flex;
-    align-items: center;
-    gap: 16px;
-    margin-bottom: 28px;
-  }
-
-  .app-logo {
-    width: 48px;
-    height: 48px;
-    flex: none;
-    border-radius: 50%;
-    background: var(--yellow);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    color: #1a1200;
-    box-shadow: 0 4px 14px rgba(245, 197, 24, 0.25);
-  }
-
-  .app-logo svg { width: 24px; height: 24px; }
-
-  .app-title h1 {
-    margin: 0;
-    font-size: 20px;
-    font-weight: 700;
+  h1 {
+    font-size: 1.5rem;
+    margin: 0 0 2px;
+    font-weight: 650;
     letter-spacing: -0.01em;
   }
-
-  .app-title p {
-    margin: 2px 0 0;
-    font-size: 13px;
-    color: var(--text-muted);
-  }
-
-  /* ---------- stepper ---------- */
-
-  .stepper {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    margin-bottom: 24px;
-    overflow-x: auto;
-    padding-bottom: 2px;
-  }
-
-  .step-pill {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    padding: 8px 14px 8px 8px;
-    border-radius: var(--pill);
-    border: 1px solid var(--border);
-    background: transparent;
+  .sub {
     color: var(--text-dim);
-    font-size: 13px;
-    font-weight: 600;
-    white-space: nowrap;
-    transition: border-color 0.25s var(--ease), color 0.25s var(--ease), background 0.25s var(--ease);
+    font-size: 0.92rem;
+    margin: 0;
   }
-
-  .step-pill .num {
-    width: 22px;
-    height: 22px;
-    border-radius: 50%;
+  .stats {
     display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 12px;
-    background: var(--panel-2);
-    color: var(--text-dim);
-    flex: none;
-    transition: background 0.25s var(--ease), color 0.25s var(--ease);
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-top: 16px;
   }
-
-  .step-pill.active {
-    border-color: var(--teal);
-    color: var(--text);
-    background: var(--teal-dim);
-  }
-
-  .step-pill.active .num { background: var(--teal); color: var(--teal-ink); }
-
-  .step-pill.done { color: var(--text-muted); }
-  .step-pill.done .num { background: var(--border-strong); color: var(--text); }
-
-  .step-connector {
-    width: 16px;
-    height: 1px;
-    background: var(--border);
-    flex: none;
-  }
-
-  /* ---------- card ---------- */
-
-  .card {
+  .stat {
     background: var(--panel);
     border: 1px solid var(--border);
-    border-radius: var(--radius);
-    padding: 28px;
-    margin-bottom: 20px;
-    box-shadow: var(--shadow);
-    animation: rise 0.4s var(--ease);
+    border-radius: 10px;
+    padding: 10px 14px;
+    min-width: 108px;
   }
+  .stat .n { font-size: 1.25rem; font-weight: 650; line-height: 1.1; }
+  .stat .l { font-size: 0.75rem; color: var(--text-dim); margin-top: 2px; }
+  .stat.green .n { color: var(--green); }
+  .stat.yellow .n { color: var(--yellow); }
+  .stat.grey .n { color: var(--text-dim); }
 
-  @keyframes rise {
-    from { opacity: 0; transform: translateY(8px); }
-    to { opacity: 1; transform: translateY(0); }
-  }
-
-  .card h2 {
-    margin: 0 0 4px;
-    font-size: 17px;
-    font-weight: 700;
-  }
-
-  .card .card-sub {
-    margin: 0 0 20px;
-    font-size: 13px;
-    color: var(--text-muted);
-  }
-
-  .panel { display: none; }
-  .panel.active { display: block; }
-
-  /* ---------- upload grid ---------- */
-
-  .upload-grid {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 16px;
-  }
-
-  @media (max-width: 640px) {
-    .upload-grid { grid-template-columns: 1fr; }
-  }
-
-  .dropzone {
-    position: relative;
-    border: 1.5px dashed var(--border-strong);
-    border-radius: var(--radius);
-    padding: 28px 16px;
-    text-align: center;
-    background: var(--panel-2);
-    transition: border-color 0.2s var(--ease), background 0.2s var(--ease), transform 0.15s var(--ease);
-    cursor: pointer;
-  }
-
-  .dropzone:hover { border-color: var(--teal); }
-
-  .dropzone.dragover {
-    border-color: var(--teal);
-    background: var(--teal-dim);
-    transform: scale(1.01);
-  }
-
-  .dropzone.has-file {
-    border-style: solid;
-    border-color: var(--teal);
-    background: var(--teal-dim);
-  }
-
-  .dropzone input[type="file"] {
-    position: absolute;
-    inset: 0;
-    opacity: 0;
-    cursor: pointer;
-  }
-
-  .dz-icon {
-    width: 44px;
-    height: 44px;
-    margin: 0 auto 12px;
-    border-radius: 50%;
-    background: var(--yellow-dim);
+  .controls {
+    max-width: 1100px;
+    margin: 18px auto 0;
     display: flex;
-    align-items: center;
-    justify-content: center;
-    color: var(--yellow);
-  }
-
-  .dz-icon svg { width: 22px; height: 22px; }
-
-  .dropzone.has-file .dz-icon { background: var(--teal-dim); color: var(--teal); }
-
-  .dz-title {
-    font-size: 14px;
-    font-weight: 600;
-    margin: 0 0 4px;
-  }
-
-  .dz-sub {
-    font-size: 12px;
-    color: var(--text-dim);
-    margin: 0 0 14px;
-  }
-
-  .dz-divider {
-    font-size: 11px;
-    color: var(--text-dim);
-    text-transform: uppercase;
-    letter-spacing: 0.06em;
-    margin: 10px 0;
-  }
-
-  .btn {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    gap: 8px;
-    border: none;
-    border-radius: var(--radius-sm);
-    padding: 10px 18px;
-    font-size: 13px;
-    font-weight: 600;
-    font-family: var(--font);
-    cursor: pointer;
-    transition: filter 0.15s var(--ease), transform 0.1s var(--ease), opacity 0.15s var(--ease);
-    position: relative;
-  }
-
-  .btn:active { transform: scale(0.97); }
-
-  .btn-primary { background: var(--teal); color: var(--teal-ink); }
-  .btn-primary:hover { filter: brightness(1.08); }
-  .btn-primary:disabled { opacity: 0.4; cursor: not-allowed; filter: none; }
-
-  .btn-pill { border-radius: var(--pill); }
-
-  .btn-outline {
-    background: transparent;
-    color: var(--text-muted);
-    border: 1px solid var(--border-strong);
-  }
-  .btn-outline:hover { border-color: var(--teal); color: var(--text); }
-
-  .btn-text {
-    background: transparent;
-    color: var(--teal);
-    padding: 6px 4px;
-  }
-  .btn-text:hover { filter: brightness(1.15); }
-
-  .btn-sm { padding: 6px 12px; font-size: 12px; }
-
-  .dz-filename {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    justify-content: center;
-    font-size: 13px;
-    font-weight: 600;
-    color: var(--text);
-    margin-top: 4px;
-    word-break: break-word;
-  }
-
-  .dz-remove {
-    background: none;
-    border: none;
-    color: var(--text-dim);
-    cursor: pointer;
-    font-size: 15px;
-    line-height: 1;
-    padding: 2px 6px;
-    border-radius: 4px;
-    z-index: 2;
-    position: relative;
-  }
-  .dz-remove:hover { color: var(--danger); }
-
-  .manual-add {
-    margin-top: 16px;
-    text-align: center;
-  }
-
-  .step-actions {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-top: 24px;
-    gap: 12px;
+    gap: 10px;
     flex-wrap: wrap;
   }
-
-  /* ---------- misc ---------- */
-
-  .hint {
-    font-size: 12px;
-    color: var(--text-dim);
-    line-height: 1.5;
-  }
-
-  .banner {
-    display: flex;
-    gap: 10px;
-    align-items: flex-start;
-    border-radius: var(--radius-sm);
-    padding: 12px 14px;
-    font-size: 13px;
-    line-height: 1.5;
-    margin-bottom: 16px;
-  }
-  .banner-error { background: var(--danger-dim); color: #ffd7d7; border: 1px solid rgba(243, 139, 139, 0.3); }
-  .banner-warn { background: var(--yellow-dim); color: #ffe9a8; border: 1px solid rgba(245, 197, 24, 0.3); }
-  .banner-info { background: var(--teal-dim); color: #c9fff2; border: 1px solid rgba(94, 234, 212, 0.25); }
-
-  .spinner {
-    width: 16px;
-    height: 16px;
-    border-radius: 50%;
-    border: 2px solid rgba(255, 255, 255, 0.25);
-    border-top-color: currentColor;
-    animation: spin 0.7s linear infinite;
-    flex: none;
-  }
-  @keyframes spin { to { transform: rotate(360deg); } }
-
-  .loading-row {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    color: var(--text-muted);
-    font-size: 13px;
-    padding: 10px 0;
-  }
-
-  /* ---------- editable table (PDF review) ---------- */
-
-  .table-scroll {
-    overflow-x: auto;
+  .search {
+    flex: 1 1 260px;
+    background: var(--panel);
     border: 1px solid var(--border);
-    border-radius: var(--radius-sm);
-  }
-
-  #pdf-rows-table-scroll {
-    max-height: 480px;
-    overflow-y: auto;
-  }
-
-  table.rows-table {
-    width: 100%;
-    border-collapse: collapse;
-    font-size: 13px;
-    min-width: 520px;
-  }
-
-  table.rows-table th {
-    text-align: left;
-    font-size: 11px;
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-    color: var(--text-dim);
-    background: var(--panel-2);
-    padding: 10px 12px;
-    position: sticky;
-    top: 0;
-    border-bottom: 1px solid var(--border);
-  }
-
-  table.rows-table td {
-    padding: 8px 12px;
-    border-bottom: 1px solid var(--border);
-    vertical-align: middle;
-  }
-
-  table.rows-table tr:last-child td { border-bottom: none; }
-
-  table.rows-table tr:hover td { background: rgba(255, 255, 255, 0.015); }
-
-  .cell-input {
-    width: 100%;
-    background: transparent;
-    border: 1px solid transparent;
-    border-radius: 6px;
+    border-radius: 10px;
+    padding: 11px 14px;
     color: var(--text);
-    font-family: var(--font);
-    font-size: 13px;
-    padding: 5px 7px;
-  }
-  .cell-input:hover { border-color: var(--border-strong); }
-  .cell-input:focus {
+    font-size: 0.95rem;
     outline: none;
-    border-color: var(--teal);
-    background: rgba(94, 234, 212, 0.06);
+    transition: border-color .15s ease;
   }
-  .cell-input.price-input { width: 100px; text-align: right; font-family: var(--mono); }
+  .search:focus { border-color: var(--accent); }
+  .search::placeholder { color: var(--text-dim); }
 
-  .row-del {
-    background: none;
-    border: none;
-    color: var(--text-dim);
-    cursor: pointer;
-    font-size: 16px;
-    line-height: 1;
-    padding: 4px 6px;
-    border-radius: 6px;
-  }
-  .row-del:hover { color: var(--danger); background: var(--danger-dim); }
-
-  .table-toolbar {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 12px;
-    gap: 12px;
-    flex-wrap: wrap;
-  }
-
-  .count-chip {
-    font-size: 12px;
-    color: var(--text-muted);
-    background: var(--panel-2);
+  select {
+    background: var(--panel);
     border: 1px solid var(--border);
-    border-radius: var(--pill);
-    padding: 4px 10px;
+    border-radius: 10px;
+    padding: 11px 12px;
+    color: var(--text);
+    font-size: 0.9rem;
+    outline: none;
   }
 
-  details.unparsed {
-    margin-top: 14px;
-    font-size: 12px;
-    color: var(--text-dim);
-  }
-  details.unparsed summary {
-    cursor: pointer;
-    color: var(--text-muted);
-    padding: 4px 0;
-  }
-  details.unparsed pre {
-    white-space: pre-wrap;
-    word-break: break-word;
-    background: var(--panel-2);
+  main {
+    max-width: 1100px;
+    margin: 16px auto 0;
+    background: var(--panel);
     border: 1px solid var(--border);
-    border-radius: var(--radius-sm);
-    padding: 12px;
-    max-height: 200px;
-    overflow-y: auto;
-    font-family: var(--mono);
-    font-size: 11.5px;
-    line-height: 1.6;
+    border-radius: 12px;
+    overflow: hidden;
   }
-
-  /* ---------- stats ---------- */
-
-  .stats-grid {
-    display: grid;
-    grid-template-columns: repeat(5, 1fr);
-    gap: 10px;
-    margin-bottom: 20px;
-  }
-
-  @media (max-width: 720px) {
-    .stats-grid { grid-template-columns: repeat(2, 1fr); }
-  }
-
-  .stat-card {
-    background: var(--panel-2);
-    border: 1px solid var(--border);
-    border-radius: var(--radius-sm);
-    padding: 14px;
+  table { width: 100%; border-collapse: collapse; }
+  thead th {
     text-align: left;
-  }
-
-  .stat-card .n {
-    font-size: 22px;
-    font-weight: 700;
-    font-family: var(--mono);
-  }
-
-  .stat-card .l {
-    font-size: 11px;
-    color: var(--text-dim);
-    margin-top: 2px;
+    font-size: 0.72rem;
     text-transform: uppercase;
     letter-spacing: 0.04em;
-  }
-
-  .stat-card.c-auto .n { color: var(--teal); }
-  .stat-card.c-review .n { color: var(--yellow); }
-  .stat-card.c-notfound .n { color: var(--danger); }
-
-  /* ---------- results toolbar + table ---------- */
-
-  .results-toolbar {
-    display: flex;
-    gap: 10px;
-    margin-bottom: 14px;
-    flex-wrap: wrap;
-  }
-
-  .search-input, .filter-select {
+    color: var(--text-dim);
+    padding: 12px 16px;
     background: var(--panel-2);
-    border: 1px solid var(--border);
-    color: var(--text);
-    border-radius: var(--radius-sm);
-    padding: 9px 12px;
-    font-size: 13px;
-    font-family: var(--font);
+    border-bottom: 1px solid var(--border);
+    position: sticky;
+    top: 0;
   }
-  .search-input { flex: 1; min-width: 160px; }
-  .search-input:focus, .filter-select:focus { outline: none; border-color: var(--teal); }
-
-  .status-badge {
-    display: inline-flex;
-    align-items: center;
-    gap: 5px;
-    font-size: 11px;
-    font-weight: 700;
-    padding: 3px 9px;
-    border-radius: var(--pill);
-    white-space: nowrap;
+  thead th.num, td.num { text-align: right; }
+  tbody td {
+    padding: 11px 16px;
+    border-bottom: 1px solid var(--border);
+    font-size: 0.92rem;
   }
-  .status-badge.st-changed { background: var(--teal-dim); color: var(--teal); }
-  .status-badge.st-unchanged { background: rgba(255, 255, 255, 0.06); color: var(--text-muted); }
-  .status-badge.st-review { background: var(--yellow-dim); color: var(--yellow); }
-  .status-badge.st-notfound { background: var(--danger-dim); color: var(--danger); }
-  .status-badge.st-skipped { background: rgba(255, 255, 255, 0.04); color: var(--text-dim); }
-
-  .price-old { color: var(--text-dim); text-decoration: line-through; font-family: var(--mono); font-size: 12px; }
-  .price-new { color: var(--text); font-family: var(--mono); font-weight: 600; }
-  .price-new.up { color: var(--teal); }
-  .note-cell { color: var(--text-dim); font-size: 11.5px; max-width: 320px; }
-
-  .results-scroll { max-height: 560px; overflow-y: auto; }
-
-  .empty-state {
+  tbody tr:last-child td { border-bottom: none; }
+  tbody tr:hover { background: rgba(255,255,255,0.02); }
+  .price { font-variant-numeric: tabular-nums; font-weight: 600; }
+  .old-price {
+    font-variant-numeric: tabular-nums;
+    color: var(--text-dim);
+    text-decoration: line-through;
+    font-size: 0.82rem;
+    margin-left: 8px;
+  }
+  .badge {
+    display: inline-block;
+    font-size: 0.68rem;
+    font-weight: 650;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    padding: 2px 7px;
+    border-radius: 999px;
+    margin-left: 8px;
+    vertical-align: middle;
+  }
+  .badge.changed { background: rgba(62,207,142,0.15); color: var(--green); }
+  .badge.review { background: rgba(232,184,75,0.15); color: var(--yellow); }
+  .badge.notfound { background: rgba(107,114,128,0.18); color: var(--text-dim); }
+  .badge.skipped { background: rgba(107,114,128,0.18); color: var(--text-dim); }
+  .size-tag {
+    color: var(--text-dim);
+    font-size: 0.85rem;
+  }
+  .empty {
+    padding: 48px 16px;
     text-align: center;
-    padding: 40px 20px;
     color: var(--text-dim);
-    font-size: 13px;
   }
-
-  /* ---------- mode select ---------- */
-  .mode-grid {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 16px;
-    margin-bottom: 24px;
-  }
-  @media (max-width: 640px) { .mode-grid { grid-template-columns: 1fr; } }
-  .mode-card {
-    text-align: left;
-    background: var(--panel);
-    border: 1px solid var(--border);
-    border-radius: var(--radius);
-    padding: 24px;
-    cursor: pointer;
-    box-shadow: var(--shadow);
-    transition: border-color 0.2s var(--ease), transform 0.15s var(--ease);
-    font-family: var(--font);
-    color: var(--text);
-  }
-  .mode-card:hover { border-color: var(--teal); transform: translateY(-2px); }
-  .mode-card .mode-icon {
-    width: 40px; height: 40px; border-radius: 50%;
-    background: var(--teal-dim); color: var(--teal);
-    display: flex; align-items: center; justify-content: center;
-    margin-bottom: 14px;
-  }
-  .mode-card .mode-icon svg { width: 20px; height: 20px; }
-  .mode-card h3 { margin: 0 0 6px; font-size: 15px; font-weight: 700; }
-  .mode-card p { margin: 0; font-size: 13px; color: var(--text-muted); line-height: 1.5; }
-
-  .mode-back {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    background: none;
-    border: none;
+  footer {
+    max-width: 1100px;
+    margin: 18px auto 0;
     color: var(--text-dim);
-    font-size: 12.5px;
-    cursor: pointer;
-    padding: 4px 0;
-    margin-bottom: 14px;
-    font-family: var(--font);
-  }
-  .mode-back:hover { color: var(--teal); }
-
-  /* ---------- build-new-pricelist mode ---------- */
-  .field-grid {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 16px;
-    margin-bottom: 20px;
-  }
-  @media (max-width: 640px) { .field-grid { grid-template-columns: 1fr; } }
-  .field label {
-    display: block;
-    font-size: 12px;
-    font-weight: 600;
-    color: var(--text-muted);
-    margin-bottom: 6px;
-  }
-  .field input[type="text"] {
-    width: 100%;
-    background: var(--panel-2);
-    border: 1px solid var(--border);
-    color: var(--text);
-    border-radius: var(--radius-sm);
-    padding: 10px 12px;
-    font-size: 13px;
-    font-family: var(--font);
-  }
-  .field input[type="text"]:focus { outline: none; border-color: var(--teal); }
-
-  .split-grid {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) minmax(0, 1.2fr);
-    gap: 18px;
-    align-items: start;
-  }
-  @media (max-width: 860px) { .split-grid { grid-template-columns: 1fr; } }
-
-  .pdf-viewer-toolbar {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 8px;
-    margin-bottom: 10px;
-  }
-  .zoom-controls { display: flex; align-items: center; gap: 6px; }
-  .zoom-controls button {
-    width: 26px; height: 26px;
-    border-radius: 6px;
-    border: 1px solid var(--border-strong);
-    background: var(--panel-2);
-    color: var(--text);
-    cursor: pointer;
-    font-size: 14px;
-    line-height: 1;
-  }
-  .zoom-controls button:hover { border-color: var(--teal); color: var(--teal); }
-  .zoom-pct { font-size: 11.5px; color: var(--text-dim); min-width: 38px; text-align: center; }
-
-  .pdf-pages {
-    overflow: auto;
-    max-height: 640px;
-    border: 1px solid var(--border);
-    border-radius: var(--radius-sm);
-    background: var(--panel-2);
-    padding: 12px;
-  }
-  .pdf-page-wrap { margin-bottom: 14px; }
-  .pdf-page-wrap:last-child { margin-bottom: 0; }
-  .pdf-page-label { font-size: 11px; color: var(--text-dim); margin: 0 0 4px; }
-  .pdf-page-canvas {
-    display: block;
-    border: 1px solid var(--border);
-    border-radius: 4px;
-    background: #fff;
-  }
-
-  .b-table-wrap { max-height: 640px; overflow-y: auto; }
-  table.rows-table.b-table td { vertical-align: top; }
-  table.rows-table.b-table input.cell-input { font-size: 12.5px; }
-  .b-pack-input { width: 72px !important; text-align: center; font-family: var(--mono); }
-  .b-price-input { width: 88px !important; text-align: right; font-family: var(--mono); }
-
-  .method-hint {
-    font-size: 11px;
-    color: var(--text-dim);
-    margin-top: 2px;
-  }
-
-  /* ---------- footer ---------- */
-
-  .app-footer {
-    max-width: 980px;
-    margin: 40px auto 0;
-    padding-top: 20px;
-    border-top: 1px solid var(--border);
-    font-size: 12px;
-    color: var(--text-dim);
+    font-size: 0.78rem;
     line-height: 1.6;
-    text-align: center;
   }
+  .legend { display:flex; gap:16px; flex-wrap:wrap; margin-top:6px; }
+  .legend span { display:flex; align-items:center; gap:6px; }
+  .dot { width:8px; height:8px; border-radius:50%; display:inline-block; }
+  .dot.green { background: var(--green); }
+  .dot.yellow { background: var(--yellow); }
+  .dot.grey { background: var(--text-dim); }
 
-  .app-footer b { color: var(--text-muted); }
-
-  .sr-only {
-    position: absolute;
-    width: 1px; height: 1px;
-    padding: 0; margin: -1px;
-    overflow: hidden;
-    clip: rect(0,0,0,0);
-    white-space: nowrap;
-    border: 0;
+  @media (max-width: 640px) {
+    thead th:nth-child(1), tbody td:nth-child(1) { padding-left: 12px; }
+    thead th, tbody td { padding: 10px 8px; font-size: 0.85rem; }
+    .old-price { display: block; margin-left: 0; }
   }
-
-  ::selection { background: var(--teal-dim); color: var(--text); }
 </style>
 </head>
 <body>
-<div class="wrap">
-
-  <header class="app-header">
-    <div class="app-logo" aria-hidden="true">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-        <path d="M3 3v18h18"></path>
-        <path d="M18.7 8 12 14.7l-3-3-4.7 4.7"></path>
-      </svg>
-    </div>
-    <div class="app-title">
-      <h1>Price List Updater</h1>
-      <p>Update an existing pricelist, or build a brand new one from scratch — get a matched Odoo import Excel back.</p>
-    </div>
-  </header>
-
-  <!-- ---------------- MODE SELECTOR ---------------- -->
-  <section id="mode-selector">
-    <div class="mode-grid">
-      <button type="button" class="mode-card" id="mode-card-update">
-        <div class="mode-icon" aria-hidden="true">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M21 12a9 9 0 1 1-2.6-6.3"></path>
-            <path d="M21 3v6h-6"></path>
-          </svg>
-        </div>
-        <h3>Update existing pricelist</h3>
-        <p>I already have this customer's Odoo pricelist export. Match a new supplier price-update PDF against it and get the updated Excel back.</p>
-      </button>
-      <button type="button" class="mode-card" id="mode-card-build">
-        <div class="mode-icon" aria-hidden="true">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M12 5v14"></path>
-            <path d="M5 12h14"></path>
-          </svg>
-        </div>
-        <h3>Build new pricelist</h3>
-        <p>New customer, no existing export yet. Upload their price-list PDF (typed or handwritten) and build a fresh Odoo import file from scratch.</p>
-      </button>
-    </div>
-  </section>
-
-  <div id="global-banner-slot"></div>
-
-  <!-- ================ MODE: UPDATE EXISTING PRICELIST ================ -->
-  <div id="mode-update-wrap" hidden>
-  <button type="button" class="mode-back" data-back-to-selector>
-    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"></path></svg>
-    Change mode
-  </button>
-
-  <nav class="stepper" aria-label="Progress">
-    <div class="step-pill active" id="step-pill-1" data-step="1"><span class="num">1</span><span>Upload</span></div>
-    <div class="step-connector"></div>
-    <div class="step-pill" id="step-pill-2" data-step="2"><span class="num">2</span><span>Review prices</span></div>
-    <div class="step-connector"></div>
-    <div class="step-pill" id="step-pill-3" data-step="3"><span class="num">3</span><span>Matched result</span></div>
-  </nav>
-
-  <!-- ---------------- STEP 1: UPLOAD ---------------- -->
-  <section class="panel active" id="panel-1" aria-labelledby="panel-1-title">
-    <div class="card">
-      <h2 id="panel-1-title">Upload files</h2>
-      <p class="card-sub">Both files stay in this browser tab — nothing is uploaded anywhere.</p>
-
-      <div class="upload-grid">
-        <div class="dropzone" id="dz-pdf" tabindex="0" role="button" aria-label="Upload price update PDF">
-          <input type="file" id="file-pdf" accept="application/pdf" aria-hidden="true" tabindex="-1" />
-          <div class="dz-icon">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M12 3v12"></path>
-              <path d="m7 10 5 5 5-5"></path>
-              <path d="M5 21h14"></path>
-            </svg>
-          </div>
-          <p class="dz-title" id="dz-pdf-title">Drop price update PDF here</p>
-          <p class="dz-sub">Typed PDF with a real text layer (not a scanned image)</p>
-          <div class="dz-divider">or</div>
-          <span class="btn btn-primary btn-pill btn-sm" style="pointer-events:none;">Choose File</span>
-          <div class="dz-filename" id="dz-pdf-filename" hidden></div>
-        </div>
-
-        <div class="dropzone" id="dz-xlsx" tabindex="0" role="button" aria-label="Upload pricelist Excel file">
-          <input type="file" id="file-xlsx" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" aria-hidden="true" tabindex="-1" />
-          <div class="dz-icon">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M12 3v12"></path>
-              <path d="m7 10 5 5 5-5"></path>
-              <path d="M5 21h14"></path>
-            </svg>
-          </div>
-          <p class="dz-title" id="dz-xlsx-title">Drop pricelist Excel here</p>
-          <p class="dz-sub">The Odoo pricelist export (.xlsx) for this customer</p>
-          <div class="dz-divider">or</div>
-          <span class="btn btn-primary btn-pill btn-sm" style="pointer-events:none;">Choose File</span>
-          <div class="dz-filename" id="dz-xlsx-filename" hidden></div>
-        </div>
-      </div>
-
-      <div class="step-actions">
-        <p class="hint">Step 1 of 3 — both files are needed to continue.</p>
-        <button class="btn btn-primary" id="btn-extract" disabled>Extract prices from PDF →</button>
-      </div>
-    </div>
-  </section>
-
-  <!-- ---------------- STEP 2: REVIEW EXTRACTED PDF ROWS ---------------- -->
-  <section class="panel" id="panel-2" aria-labelledby="panel-2-title">
-    <div class="card">
-      <h2 id="panel-2-title">Review extracted prices</h2>
-      <p class="card-sub">This is exactly what will be matched against the Excel — fix anything that looks wrong before continuing.</p>
-
-      <div class="table-toolbar">
-        <span class="count-chip" id="pdf-row-count">0 rows</span>
-        <button class="btn btn-outline btn-sm" id="btn-add-row">+ Add row manually</button>
-      </div>
-
-      <div class="table-scroll" id="pdf-rows-table-scroll">
-        <table class="rows-table" id="pdf-rows-table">
-          <thead>
-            <tr>
-              <th style="width:60%;">Label (from PDF)</th>
-              <th style="width:25%;">Price</th>
-              <th style="width:15%;"></th>
-            </tr>
-          </thead>
-          <tbody id="pdf-rows-tbody"></tbody>
-        </table>
-      </div>
-
-      <details class="unparsed" id="unparsed-details" hidden>
-        <summary id="unparsed-summary">0 lines in the PDF weren't recognized as price rows</summary>
-        <pre id="unparsed-text"></pre>
-      </details>
-
-      <div class="step-actions">
-        <button class="btn btn-outline" id="btn-back-1">← Back</button>
-        <button class="btn btn-primary" id="btn-match">Match against Excel →</button>
-      </div>
-    </div>
-  </section>
-
-  <!-- ---------------- STEP 3: RESULTS ---------------- -->
-  <section class="panel" id="panel-3" aria-labelledby="panel-3-title">
-    <div class="card">
-      <h2 id="panel-3-title" id="results-title">Matched result</h2>
-      <p class="card-sub" id="results-sub">Review the changes, then download the updated Excel.</p>
-
-      <div class="stats-grid" id="stats-grid"></div>
-
-      <div class="results-toolbar">
-        <input type="text" class="search-input" id="results-search" placeholder="Search product name…" />
-        <select class="filter-select" id="results-filter">
-          <option value="all">All statuses</option>
-          <option value="changed">Price changed</option>
-          <option value="unchanged">Confirmed / unchanged</option>
-          <option value="review">Needs review</option>
-          <option value="notfound">Not found in PDF</option>
-          <option value="skipped">Skipped variant</option>
-        </select>
-      </div>
-
-      <div class="table-scroll results-scroll">
-        <table class="rows-table" id="results-table">
-          <thead>
-            <tr>
-              <th style="width:38%;">Product</th>
-              <th style="width:12%;">Old price</th>
-              <th style="width:12%;">New price</th>
-              <th style="width:13%;">Status</th>
-              <th style="width:25%;">Note</th>
-            </tr>
-          </thead>
-          <tbody id="results-tbody"></tbody>
-        </table>
-        <div class="empty-state" id="results-empty" hidden>No rows match your search / filter.</div>
-      </div>
-
-      <div class="step-actions">
-        <button class="btn btn-outline" id="btn-back-2">← Back</button>
-        <div style="display:flex; gap:10px; flex-wrap:wrap;">
-          <button class="btn btn-outline" id="btn-download-report">Download browsable report (.html)</button>
-          <button class="btn btn-primary" id="btn-download-xlsx">⬇ Download updated Excel</button>
-        </div>
-      </div>
-    </div>
-  </section>
+<header>
+  <h1>Central Building Supplies <span style="color:var(--text-dim); font-weight:500;">(KC013)</span></h1>
+  <p class="sub">Price list — effective 1 April 2026 · generated 14 September 2026</p>
+  <div class="stats">
+    <div class="stat green"><div class="n">6</div><div class="l">Price updated</div></div>
+    <div class="stat"><div class="n">352</div><div class="l">Confirmed current</div></div>
+    <div class="stat yellow"><div class="n">63</div><div class="l">Needs a look</div></div>
   </div>
-  <!-- ================ /MODE: UPDATE EXISTING PRICELIST ================ -->
+</header>
 
-  <!-- ================ MODE: BUILD NEW PRICELIST ================ -->
-  <div id="mode-build-wrap" hidden>
-  <button type="button" class="mode-back" data-back-to-selector>
-    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"></path></svg>
-    Change mode
-  </button>
-
-  <nav class="stepper" aria-label="Progress">
-    <div class="step-pill active" id="b-step-pill-1" data-step="1"><span class="num">1</span><span>Customer &amp; PDF</span></div>
-    <div class="step-connector"></div>
-    <div class="step-pill" id="b-step-pill-2" data-step="2"><span class="num">2</span><span>Transcribe rows</span></div>
-    <div class="step-connector"></div>
-    <div class="step-pill" id="b-step-pill-3" data-step="3"><span class="num">3</span><span>Result</span></div>
-  </nav>
-
-  <!-- ---------------- STEP B1: CUSTOMER + PDF ---------------- -->
-  <section class="panel active" id="panel-b1" aria-labelledby="panel-b1-title">
-    <div class="card">
-      <h2 id="panel-b1-title">Customer details &amp; price list PDF</h2>
-      <p class="card-sub">Works with typed PDFs and scanned/handwritten ones — you'll be able to zoom into the pages and transcribe by hand on the next step.</p>
-
-      <div class="field-grid">
-        <div class="field">
-          <label for="b-customer-name">Customer name</label>
-          <input type="text" id="b-customer-name" placeholder="e.g. Kelly's Hardware" autocomplete="off" />
-        </div>
-        <div class="field">
-          <label for="b-account-number">Account number</label>
-          <input type="text" id="b-account-number" placeholder="e.g. KK038" autocomplete="off" />
-        </div>
-      </div>
-
-      <div class="dropzone" id="b-dz-pdf" tabindex="0" role="button" aria-label="Upload customer price list PDF">
-        <input type="file" id="b-file-pdf" accept="application/pdf" aria-hidden="true" tabindex="-1" />
-        <div class="dz-icon">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M12 3v12"></path>
-            <path d="m7 10 5 5 5-5"></path>
-            <path d="M5 21h14"></path>
-          </svg>
-        </div>
-        <p class="dz-title" id="b-dz-pdf-title">Drop the customer's price list PDF here</p>
-        <p class="dz-sub">Typed, scanned, or handwritten — any PDF works</p>
-        <div class="dz-divider">or</div>
-        <span class="btn btn-primary btn-pill btn-sm" style="pointer-events:none;">Choose File</span>
-        <div class="dz-filename" id="b-dz-pdf-filename" hidden></div>
-      </div>
-
-      <div class="step-actions">
-        <p class="hint">Step 1 of 3 — customer name, account number, and the PDF are all needed to continue.</p>
-        <button class="btn btn-primary" id="b-btn-continue" disabled>Open PDF →</button>
-      </div>
-    </div>
-  </section>
-
-  <!-- ---------------- STEP B2: TRANSCRIBE / REVIEW ROWS ---------------- -->
-  <section class="panel" id="panel-b2" aria-labelledby="panel-b2-title">
-    <div class="card">
-      <h2 id="panel-b2-title">Transcribe every row</h2>
-      <p class="card-sub" id="panel-b2-sub">Zoom into the pages on the left to read (or re-verify any handwritten price), and fill in the table on the right. Nothing is matched until you click Continue.</p>
-
-      <div class="split-grid">
-        <div class="pdf-viewer">
-          <div class="pdf-viewer-toolbar">
-            <span class="count-chip" id="b-page-count">0 pages</span>
-            <div class="zoom-controls">
-              <button type="button" id="b-zoom-out" aria-label="Zoom out">−</button>
-              <span class="zoom-pct" id="b-zoom-pct">140%</span>
-              <button type="button" id="b-zoom-in" aria-label="Zoom in">+</button>
-            </div>
-          </div>
-          <div class="pdf-pages" id="b-pdf-pages"></div>
-        </div>
-
-        <div>
-          <div class="table-toolbar">
-            <span class="count-chip" id="b-row-count">0 rows</span>
-            <button class="btn btn-outline btn-sm" id="b-btn-add-row">+ Add row manually</button>
-          </div>
-          <div class="table-scroll b-table-wrap" id="b-rows-table-scroll">
-            <table class="rows-table b-table" id="b-rows-table">
-              <thead>
-                <tr>
-                  <th style="width:34%;">Product / colour</th>
-                  <th style="width:14%;">Pack</th>
-                  <th style="width:18%;">Printed price</th>
-                  <th style="width:18%;">Special price</th>
-                  <th style="width:8%;"></th>
-                </tr>
-              </thead>
-              <tbody id="b-rows-tbody"></tbody>
-            </table>
-          </div>
-          <p class="hint" style="margin-top:10px;">
-            Tip: for a row that covers every shade of a line at one price, type <b>Colours</b> as the colour word
-            (e.g. "High Gloss Enamel Colours") — it'll be expanded into every colour that line has in your Odoo
-            catalog. For a row like "White / Cream / Brown", it's split into one line per colour automatically.
-          </p>
-        </div>
-      </div>
-
-      <div class="step-actions">
-        <button class="btn btn-outline" id="b-btn-back-1">← Back</button>
-        <button class="btn btn-primary" id="b-btn-process">Match against Odoo catalog →</button>
-      </div>
-    </div>
-  </section>
-
-  <!-- ---------------- STEP B3: RESULT ---------------- -->
-  <section class="panel" id="panel-b3" aria-labelledby="panel-b3-title">
-    <div class="card">
-      <h2 id="panel-b3-title">New pricelist ready</h2>
-      <p class="card-sub" id="b-results-sub">Review the flagged rows before importing into Odoo, then download.</p>
-
-      <div class="stats-grid" id="b-stats-grid"></div>
-
-      <div class="results-toolbar">
-        <input type="text" class="search-input" id="b-results-search" placeholder="Search product name…" />
-        <select class="filter-select" id="b-results-filter">
-          <option value="all">All statuses</option>
-          <option value="matched">Matched</option>
-          <option value="corrected">Name corrected</option>
-          <option value="generated">Generated (Colours)</option>
-          <option value="split">Split (slash)</option>
-          <option value="review">Needs review</option>
-          <option value="notfound">Not found</option>
-        </select>
-      </div>
-
-      <div class="table-scroll results-scroll">
-        <table class="rows-table" id="b-results-table">
-          <thead>
-            <tr>
-              <th style="width:45%;">Product</th>
-              <th style="width:12%;">Price</th>
-              <th style="width:15%;">Status</th>
-              <th style="width:28%;">Note</th>
-            </tr>
-          </thead>
-          <tbody id="b-results-tbody"></tbody>
-        </table>
-        <div class="empty-state" id="b-results-empty" hidden>No rows match your search / filter.</div>
-      </div>
-
-      <div class="step-actions">
-        <button class="btn btn-outline" id="b-btn-back-2">← Back</button>
-        <button class="btn btn-primary" id="b-btn-download-xlsx">⬇ Download new pricelist Excel</button>
-      </div>
-    </div>
-  </section>
-  </div>
-  <!-- ================ /MODE: BUILD NEW PRICELIST ================ -->
-
+<div class="controls">
+  <input class="search" id="search" type="text" placeholder="Search product or colour…" autocomplete="off">
+  <select id="statusFilter">
+    <option value="">All rows</option>
+    <option value="changed">Price updated</option>
+    <option value="confirmed">Confirmed current</option>
+    <option value="review">Needs review</option>
+    <option value="notfound">Not in latest update</option>
+    <option value="skipped">Special variant</option>
+  </select>
 </div>
 
-<footer class="app-footer">
-  <p><b>Nothing leaves this browser.</b> The PDF and Excel are read, matched, and rewritten entirely on your device using client-side JavaScript — no file is ever uploaded to a server.</p>
-  <p>Price List Updater — built for Olympic Paints pricelist updates. Handles both updating an existing customer's pricelist and building a brand new one from scratch.</p>
+<main>
+  <table>
+    <thead>
+      <tr>
+        <th>Product</th>
+        <th class="size-col">Size</th>
+        <th class="num">Price</th>
+      </tr>
+    </thead>
+    <tbody id="tbody"></tbody>
+  </table>
+  <div class="empty" id="empty" style="display:none;">No products match your search.</div>
+</main>
+
+<footer>
+  <div>421 products · prices exclude VAT.</div>
+  <div class="legend">
+    <span><span class="dot green"></span> updated this round</span>
+    <span><span class="dot yellow"></span> flagged for manual review</span>
+    <span><span class="dot grey"></span> not covered by the latest price update / special variant SKU</span>
+  </div>
 </footer>
 
-<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-<script src="./catalog-data.js"></script>
-<script src="./catalog-match.js"></script>
-<script type="module" src="./app.js"></script>
+<script>
+const DATA = [{"name":"100Ml Stainers Black","size":"100ML","price":332.7,"old":332.7,"status":"confirmed","note":"AUTO (default price - only unnamed-colour PDF row in group)"},{"name":"100Ml Stainers Blue","size":"100ML","price":332.7,"old":332.7,"status":"confirmed","note":"AUTO (default price - only unnamed-colour PDF row in group)"},{"name":"100Ml Stainers Brown","size":"100ML","price":332.7,"old":332.7,"status":"confirmed","note":"AUTO (default price - only unnamed-colour PDF row in group)"},{"name":"100Ml Stainers Chr Yellow","size":"100ML","price":332.7,"old":332.7,"status":"confirmed","note":"AUTO (default price - only unnamed-colour PDF row in group)"},{"name":"100Ml Stainers Green","size":"100ML","price":332.7,"old":332.7,"status":"confirmed","note":"AUTO (default price - only unnamed-colour PDF row in group)"},{"name":"100Ml Stainers Orange","size":"100ML","price":332.7,"old":332.7,"status":"confirmed","note":"AUTO (default price - only unnamed-colour PDF row in group)"},{"name":"100Ml Stainers Red","size":"100ML","price":332.7,"old":332.7,"status":"confirmed","note":"AUTO (default price - only unnamed-colour PDF row in group)"},{"name":"100Ml Stainers Violet","size":"100ML","price":373.27,"old":332.7,"status":"changed","note":"AUTO (exact/slash colour match)"},{"name":"100Ml Stainers Y Ochre","size":"100ML","price":332.7,"old":332.7,"status":"confirmed","note":"AUTO (default price - only unnamed-colour PDF row in group)"},{"name":"100Ml Stainers Yellow","size":"100ML","price":332.7,"old":332.7,"status":"confirmed","note":"AUTO (default price - only unnamed-colour PDF row in group)"},{"name":"50Ml Stainers Black","size":"50ML","price":186.63,"old":186.63,"status":"confirmed","note":"AUTO (default price - only unnamed-colour PDF row in group)"},{"name":"50Ml Stainers Blue","size":"50ML","price":186.63,"old":186.63,"status":"confirmed","note":"AUTO (default price - only unnamed-colour PDF row in group)"},{"name":"50Ml Stainers Brown","size":"50ML","price":186.63,"old":186.63,"status":"confirmed","note":"AUTO (default price - only unnamed-colour PDF row in group)"},{"name":"50Ml Stainers Chr Yellow","size":"50ML","price":186.63,"old":186.63,"status":"confirmed","note":"AUTO (default price - only unnamed-colour PDF row in group)"},{"name":"50Ml Stainers Green","size":"50ML","price":186.63,"old":186.63,"status":"confirmed","note":"AUTO (default price - only unnamed-colour PDF row in group)"},{"name":"50Ml Stainers L Yellow","size":"50ML","price":186.63,"old":186.63,"status":"confirmed","note":"AUTO (default price - only unnamed-colour PDF row in group)"},{"name":"50Ml Stainers Orange","size":"50ML","price":186.63,"old":186.63,"status":"confirmed","note":"AUTO (default price - only unnamed-colour PDF row in group)"},{"name":"50Ml Stainers Red","size":"50ML","price":186.63,"old":186.63,"status":"confirmed","note":"AUTO (default price - only unnamed-colour PDF row in group)"},{"name":"50Ml Stainers Violet","size":"50ML","price":210.98,"old":186.63,"status":"changed","note":"AUTO (exact/slash colour match)"},{"name":"50Ml Stainers Y Ochre","size":"50ML","price":186.63,"old":186.63,"status":"confirmed","note":"AUTO (default price - only unnamed-colour PDF row in group)"},{"name":"7-In-1 Acrylic Pva Espresso Grey","size":"20L","price":186.63,"old":186.63,"status":"review","note":"REVIEW NEEDED (this colour is priced differently from the rest of its group today)"},{"name":"7-In-1 Acrylic Pva Mushroom","size":"20L","price":744.58,"old":744.58,"status":"confirmed","note":"AUTO (default price - only unnamed-colour PDF row in group)"},{"name":"7-In-1 Acrylic Pva Night Sky","size":"20L","price":744.58,"old":744.58,"status":"confirmed","note":"AUTO (default price - only unnamed-colour PDF row in group)"},{"name":"7-In-1 Acrylic Pva Pebble Stone","size":"20L","price":744.58,"old":744.58,"status":"confirmed","note":"AUTO (default price - only unnamed-colour PDF row in group)"},{"name":"7-In-1 Acrylic Pva Rim Rock","size":"20L","price":744.58,"old":744.58,"status":"confirmed","note":"AUTO (default price - only unnamed-colour PDF row in group)"},{"name":"7-In-1 Acrylic Pva Sand Storm","size":"20L","price":744.58,"old":744.58,"status":"confirmed","note":"AUTO (default price - only unnamed-colour PDF row in group)"},{"name":"7-In-1 Acrylic Pva Silver Mist","size":"20L","price":744.58,"old":744.58,"status":"confirmed","note":"AUTO (default price - only unnamed-colour PDF row in group)"},{"name":"7-In-1 Acrylic Pva Stone Grey","size":"20L","price":744.58,"old":744.58,"status":"confirmed","note":"AUTO (default price - only unnamed-colour PDF row in group)"},{"name":"7-In-1 Acrylic Pva White","size":"20L","price":744.58,"old":744.58,"status":"confirmed","note":"AUTO (default price - only unnamed-colour PDF row in group)"},{"name":"Alkyd Roof /Stoep Aluminium","size":"1L","price":108.23,"old":108.23,"status":"confirmed","note":"AUTO (default price - only unnamed-colour PDF row in group)"},{"name":"Alkyd Roof /Stoep Aluminium","size":"5L","price":454.56,"old":454.56,"status":"confirmed","note":"AUTO (default price - only unnamed-colour PDF row in group)"},{"name":"Alkyd Roof /Stoep Aquamarine","size":"1L","price":108.23,"old":108.23,"status":"confirmed","note":"AUTO (default price - only unnamed-colour PDF row in group)"},{"name":"Alkyd Roof /Stoep Aquamarine","size":"5L","price":454.56,"old":454.56,"status":"confirmed","note":"AUTO (default price - only unnamed-colour PDF row in group)"},{"name":"Alkyd Roof /Stoep Black","size":"1L","price":108.23,"old":108.23,"status":"confirmed","note":"AUTO (default price - only unnamed-colour PDF row in group)"},{"name":"Alkyd Roof /Stoep Black","size":"5L","price":454.56,"old":454.56,"status":"confirmed","note":"AUTO (default price - only unnamed-colour PDF row in group)"},{"name":"Alkyd Roof /Stoep Brown","size":"1L","price":108.23,"old":108.23,"status":"confirmed","note":"AUTO (default price - only unnamed-colour PDF row in group)"},{"name":"Alkyd Roof /Stoep Brown","size":"5L","price":454.56,"old":454.56,"status":"confirmed","note":"AUTO (default price - only unnamed-colour PDF row in group)"},{"name":"Alkyd Roof /Stoep Burgundy","size":"1L","price":108.23,"old":108.23,"status":"confirmed","note":"AUTO (default price - only unnamed-colour PDF row in group)"},{"name":"Alkyd Roof /Stoep Burgundy","size":"5L","price":454.56,"old":454.56,"status":"confirmed","note":"AUTO (default price - only unnamed-colour PDF row in group)"},{"name":"Alkyd Roof /Stoep Charcoal","size":"1L","price":108.23,"old":108.23,"status":"confirmed","note":"AUTO (default price - only unnamed-colour PDF row in group)"},{"name":"Alkyd Roof /Stoep Charcoal","size":"5L","price":454.56,"old":454.56,"status":"confirmed","note":"AUTO (default price - only unnamed-colour PDF row in group)"},{"name":"Alkyd Roof /Stoep Green","size":"1L","price":108.23,"old":108.23,"status":"confirmed","note":"AUTO (default price - only unnamed-colour PDF row in group)"},{"name":"Alkyd Roof /Stoep Green","size":"5L","price":454.56,"old":454.56,"status":"confirmed","note":"AUTO (default price - only unnamed-colour PDF row in group)"},{"name":"Alkyd Roof /Stoep Grey","size":"1L","price":108.23,"old":108.23,"status":"confirmed","note":"AUTO (default price - only unnamed-colour PDF row in group)"},{"name":"Alkyd Roof /Stoep Grey","size":"5L","price":454.56,"old":454.56,"status":"confirmed","note":"AUTO (default price - only unnamed-colour PDF row in group)"},{"name":"Alkyd Roof /Stoep Lime Lite","size":"5L","price":454.56,"old":454.56,"status":"confirmed","note":"AUTO (default price - only unnamed-colour PDF row in group)"},{"name":"Alkyd Roof /Stoep Red","size":"1L","price":108.23,"old":108.23,"status":"confirmed","note":"AUTO (default price - only unnamed-colour PDF row in group)"},{"name":"Alkyd Roof /Stoep Red","size":"5L","price":454.56,"old":454.56,"status":"confirmed","note":"AUTO (default price - only unnamed-colour PDF row in group)"},{"name":"Alkyd Roof /Stoep Silver","size":"1L","price":108.23,"old":108.23,"status":"confirmed","note":"AUTO (default price - only unnamed-colour PDF row in group)"},{"name":"Alkyd Roof /Stoep Silver","size":"5L","price":454.56,"old":454.56,"status":"confirmed","note":"AUTO (default price - only unnamed-colour PDF row in group)"},{"name":"Alkyd Roof /Stoep Terracotta","size":"5L","price":454.56,"old":454.56,"status":"confirmed","note":"AUTO (default price - only unnamed-colour PDF row in group)"},{"name":"Alkyd Roof Black","size":"5L","price":454.56,"old":454.56,"status":"notfound","note":"NOT FOUND (product line not recognised)"},{"name":"Blue Oxide Blue 500GM","size":"","price":548.39,"old":548.39,"status":"confirmed","note":"AUTO (exact/slash colour match)"},{"name":"Bonding Liquid","size":"1L","price":98.57,"old":98.57,"status":"confirmed","note":"AUTO (default price - only unnamed-colour PDF row in group)"},{"name":"Bonding Liquid","size":"5L","price":385.94,"old":385.94,"status":"confirmed","note":"AUTO (default price - only unnamed-colour PDF row in group)"},{"name":"Decor Apricot","size":"20L","price":300.0,"old":300.0,"status":"confirmed","note":"AUTO (group 'Colours' price)"},{"name":"Decor Chestnut","size":"20L","price":300.0,"old":300.0,"status":"confirmed","note":"AUTO (group 'Colours' price)"},{"name":"Decor Cranberry","size":"20L","price":300.0,"old":300.0,"status":"confirmed","note":"AUTO (group 'Colours' price)"},{"name":"Decor Cream","size":"20L","price":275.0,"old":275.0,"status":"confirmed","note":"AUTO (exact/slash colour match)"},{"name":"Decor Crisp Mint","size":"20L","price":300.0,"old":300.0,"status":"confirmed","note":"AUTO (group 'Colours' price)"},{"name":"Decor Dark Grey","size":"20L","price":300.0,"old":300.0,"status":"confirmed","note":"AUTO (group 'Colours' price)"},{"name":"Decor Fossil Green","size":"20L","price":300.0,"old":300.0,"status":"confirmed","note":"AUTO (group 'Colours' price)"},{"name":"Decor Guava","size":"20L","price":300.0,"old":300.0,"status":"confirmed","note":"AUTO (group 'Colours' price)"},{"name":"Decor Kiwi","size":"20L","price":300.0,"old":300.0,"status":"confirmed","note":"AUTO (group 'Colours' price)"},{"name":"Decor Maize","size":"20L","price":300.0,"old":300.0,"status":"confirmed","note":"AUTO (group 'Colours' price)"},{"name":"Decor Mushroom","size":"20L","price":300.0,"old":300.0,"status":"confirmed","note":"AUTO (group 'Colours' price)"},{"name":"Decor Night Sky","size":"20L","price":300.0,"old":300.0,"status":"confirmed","note":"AUTO (group 'Colours' price)"},{"name":"Decor Peach","size":"20L","price":300.0,"old":300.0,"status":"confirmed","note":"AUTO (group 'Colours' price)"},{"name":"Decor Red","size":"20L","price":300.0,"old":300.0,"status":"confirmed","note":"AUTO (group 'Colours' price)"},{"name":"Decor Silver Mist","size":"20L","price":300.0,"old":300.0,"status":"confirmed","note":"AUTO (group 'Colours' price)"},{"name":"Decor White","size":"20L","price":275.0,"old":300.0,"status":"changed","note":"AUTO (exact/slash colour match)"},{"name":"Eclipse Pva Aqua Blue","size":"20L","price":199.12,"old":199.12,"status":"confirmed","note":"AUTO (group 'Colours' price)"},{"name":"Eclipse Pva Aqua Blue","size":"5L","price":83.21,"old":83.21,"status":"confirmed","note":"AUTO (group 'Colours' price)"},{"name":"Eclipse Pva Blue","size":"20L","price":199.12,"old":199.12,"status":"confirmed","note":"AUTO (group 'Colours' price)"},{"name":"Eclipse Pva Blue","size":"5L","price":83.21,"old":83.21,"status":"confirmed","note":"AUTO (group 'Colours' price)"},{"name":"Eclipse Pva Bushveld Brown","size":"20L","price":199.12,"old":199.12,"status":"confirmed","note":"AUTO (group 'Colours' price)"},{"name":"Eclipse Pva Bushveld Brown","size":"5L","price":83.21,"old":83.21,"status":"confirmed","note":"AUTO (group 'Colours' price)"},{"name":"Eclipse Pva Cream","size":"20L","price":184.09,"old":184.09,"status":"confirmed","note":"AUTO (exact/slash colour match)"},{"name":"Eclipse Pva Cream","size":"5L","price":78.25,"old":78.25,"status":"confirmed","note":"AUTO (exact/slash colour match)"},{"name":"Eclipse Pva Dark Grey","size":"20L","price":199.12,"old":199.12,"status":"confirmed","note":"AUTO (group 'Colours' price)"},{"name":"Eclipse Pva Green","size":"20L","price":199.12,"old":199.12,"status":"confirmed","note":"AUTO (group 'Colours' price)"},{"name":"Eclipse Pva Green","size":"5L","price":83.21,"old":83.21,"status":"confirmed","note":"AUTO (group 'Colours' price)"},{"name":"Eclipse Pva Peach","size":"20L","price":199.12,"old":199.12,"status":"confirmed","note":"AUTO (group 'Colours' price)"},{"name":"Eclipse Pva Peach","size":"5L","price":83.21,"old":83.21,"status":"confirmed","note":"AUTO (group 'Colours' price)"},{"name":"Eclipse Pva Pink","size":"20L","price":199.12,"old":199.12,"status":"confirmed","note":"AUTO (group 'Colours' price)"},{"name":"Eclipse Pva Pink","size":"5L","price":83.21,"old":83.21,"status":"confirmed","note":"AUTO (group 'Colours' price)"},{"name":"Eclipse Pva Sunshine Yellow","size":"20L","price":199.12,"old":199.12,"status":"confirmed","note":"AUTO (group 'Colours' price)"},{"name":"Eclipse Pva Sunshine Yellow","size":"5L","price":83.21,"old":83.21,"status":"confirmed","note":"AUTO (group 'Colours' price)"},{"name":"Eclipse Pva Tropical Sunset","size":"20L","price":199.12,"old":199.12,"status":"confirmed","note":"AUTO (group 'Colours' price)"},{"name":"Eclipse Pva Tropical Sunset","size":"5L","price":83.21,"old":83.21,"status":"confirmed","note":"AUTO (group 'Colours' price)"},{"name":"Eclipse Pva White","size":"20L","price":184.09,"old":184.09,"status":"confirmed","note":"AUTO (exact/slash colour match)"},{"name":"Eclipse Pva White","size":"5L","price":78.25,"old":78.25,"status":"confirmed","note":"AUTO (exact/slash colour match)"},{"name":"Eclipse Pva Yellow","size":"20L","price":199.12,"old":199.12,"status":"confirmed","note":"AUTO (group 'Colours' price)"},{"name":"Eclipse Pva Yellow","size":"5L","price":83.21,"old":83.21,"status":"confirmed","note":"AUTO (group 'Colours' price)"},{"name":"Face Brick","size":"1L","price":100.36,"old":100.36,"status":"confirmed","note":"AUTO (default price - only unnamed-colour PDF row in group)"},{"name":"Face Brick","size":"5L","price":392.64,"old":392.64,"status":"confirmed","note":"AUTO (default price - only unnamed-colour PDF row in group)"},{"name":"Hi Hiding Cont Pva White","size":"20L","price":480.86,"old":480.86,"status":"confirmed","note":"AUTO (exact/slash colour match)"},{"name":"High Gloss Enamel B Blue","size":"1L","price":84.43,"old":84.43,"status":"confirmed","note":"AUTO (group 'Colours' price)"},{"name":"High Gloss Enamel B Blue","size":"500ML","price":57.0,"old":57.0,"status":"confirmed","note":"AUTO (group 'Colours' price)"},{"name":"High Gloss Enamel B Blue","size":"5L","price":300.0,"old":300.0,"status":"confirmed","note":"AUTO (group 'Colours' price)"},{"name":"High Gloss Enamel B Green","size":"1L","price":84.43,"old":84.43,"status":"confirmed","note":"AUTO (group 'Colours' price)"},{"name":"High Gloss Enamel B Green","size":"500ML","price":57.0,"old":57.0,"status":"confirmed","note":"AUTO (group 'Colours' price)"},{"name":"High Gloss Enamel B Green","size":"5L","price":300.0,"old":300.0,"status":"confirmed","note":"AUTO (group 'Colours' price)"},{"name":"High Gloss Enamel B Yellow","size":"1L","price":84.43,"old":84.43,"status":"confirmed","note":"AUTO (group 'Colours' price)"},{"name":"High Gloss Enamel B Yellow","size":"20L","price":992.12,"old":992.12,"status":"confirmed","note":"AUTO (group 'Colours' price)"},{"name":"High Gloss Enamel B Yellow","size":"500ML","price":57.0,"old":57.0,"status":"confirmed","note":"AUTO (group 'Colours' price)"},{"name":"High Gloss Enamel Black","size":"1L","price":84.43,"old":84.43,"status":"confirmed","note":"AUTO (group 'Colours' price)"},{"name":"High Gloss Enamel Black","size":"500ML","price":57.0,"old":57.0,"status":"confirmed","note":"AUTO (exact/slash colour match)"},{"name":"High Gloss Enamel Br Green","size":"1L","price":84.43,"old":84.43,"status":"confirmed","note":"AUTO (group 'Colours' price)"},{"name":"High Gloss Enamel Br Yellow","size":"1L","price":84.43,"old":84.43,"status":"confirmed","note":"AUTO (group 'Colours' price)"},{"name":"High Gloss Enamel Brill Green","size":"20L","price":992.12,"old":992.12,"status":"confirmed","note":"AUTO (group 'Colours' price)"},{"name":"High Gloss Enamel Brown","size":"500ML","price":57.0,"old":57.0,"status":"confirmed","note":"AUTO (group 'Colours' price)"},{"name":"High Gloss Enamel Burgundy","size":"1L","price":84.43,"old":84.43,"status":"confirmed","note":"AUTO (group 'Colours' price)"},{"name":"High Gloss Enamel Burgundy","size":"20L","price":992.12,"old":992.12,"status":"confirmed","note":"AUTO (group 'Colours' price)"},{"name":"High Gloss Enamel Burgundy","size":"500ML","price":57.0,"old":57.0,"status":"confirmed","note":"AUTO (group 'Colours' price)"},{"name":"High Gloss Enamel Burgundy","size":"5L","price":300.0,"old":300.0,"status":"confirmed","note":"AUTO (group 'Colours' price)"},{"name":"High Gloss Enamel Charcoal","size":"1L","price":84.43,"old":84.43,"status":"confirmed","note":"AUTO (group 'Colours' price)"},{"name":"High Gloss Enamel Charcoal","size":"20L","price":992.12,"old":992.12,"status":"confirmed","note":"AUTO (group 'Colours' price)"},{"name":"High Gloss Enamel Charcoal","size":"500ML","price":57.0,"old":57.0,"status":"confirmed","note":"AUTO (group 'Colours' price)"},{"name":"High Gloss Enamel Charcoal","size":"5L","price":300.0,"old":300.0,"status":"confirmed","note":"AUTO (group 'Colours' price)"},{"name":"High Gloss Enamel Cream","size":"1L","price":80.11,"old":84.43,"status":"changed","note":"AUTO (exact/slash colour match)"},{"name":"High Gloss Enamel Cream","size":"20L","price":992.12,"old":992.12,"status":"confirmed","note":"AUTO (group 'Colours' price)"},{"name":"High Gloss Enamel Cream","size":"500ML","price":57.0,"old":57.0,"status":"confirmed","note":"AUTO (group 'Colours' price)"},{"name":"High Gloss Enamel Cream","size":"5L","price":300.0,"old":300.0,"status":"confirmed","note":"AUTO (exact/slash colour match)"},{"name":"High Gloss Enamel Dark Grey","size":"5L","price":300.0,"old":300.0,"status":"confirmed","note":"AUTO (group 'Colours' price)"},{"name":"High Gloss Enamel G Brown","size":"1L","price":84.43,"old":84.43,"status":"confirmed","note":"AUTO (group 'Colours' price)"},{"name":"High Gloss Enamel G Brown","size":"20L","price":992.12,"old":992.12,"status":"confirmed","note":"AUTO (group 'Colours' price)"},{"name":"High Gloss Enamel G Brown","size":"500ML","price":57.0,"old":57.0,"status":"confirmed","note":"AUTO (group 'Colours' price)"},{"name":"High Gloss Enamel G Brown","size":"5L","price":300.0,"old":300.0,"status":"confirmed","note":"AUTO (group 'Colours' price)"},{"name":"High Gloss Enamel Grey","size":"1L","price":84.43,"old":84.43,"status":"confirmed","note":"AUTO (group 'Colours' price)"},{"name":"High Gloss Enamel Grey","size":"20L","price":992.12,"old":992.12,"status":"confirmed","note":"AUTO (group 'Colours' price)"},{"name":"High Gloss Enamel Grey","size":"500ML","price":57.0,"old":57.0,"status":"confirmed","note":"AUTO (group 'Colours' price)"},{"name":"High Gloss Enamel Grey","size":"5L","price":300.0,"old":300.0,"status":"confirmed","note":"AUTO (group 'Colours' price)"},{"name":"High Gloss Enamel Ivory","size":"1L","price":84.43,"old":84.43,"status":"confirmed","note":"AUTO (group 'Colours' price)"},{"name":"High Gloss Enamel Ivory","size":"5L","price":300.0,"old":300.0,"status":"confirmed","note":"AUTO (group 'Colours' price)"},{"name":"High Gloss Enamel Light Brown","size":"1L","price":84.43,"old":84.43,"status":"confirmed","note":"AUTO (group 'Colours' price)"},{"name":"High Gloss Enamel Light Brown","size":"5L","price":300.0,"old":300.0,"status":"confirmed","note":"AUTO (group 'Colours' price)"},{"name":"High Gloss Enamel Maxi Peach","size":"1L","price":84.43,"old":84.43,"status":"confirmed","note":"AUTO (group 'Colours' price)"},{"name":"High Gloss Enamel Maxi Peach","size":"20L","price":992.12,"old":992.12,"status":"confirmed","note":"AUTO (group 'Colours' price)"},{"name":"High Gloss Enamel Maxi Peach","size":"5L","price":300.0,"old":300.0,"status":"confirmed","note":"AUTO (group 'Colours' price)"},{"name":"High Gloss Enamel P Brown","size":"500ML","price":57.0,"old":57.0,"status":"confirmed","note":"AUTO (group 'Colours' price)"},{"name":"High Gloss Enamel P Brown","size":"5L","price":300.0,"old":300.0,"status":"confirmed","note":"AUTO (group 'Colours' price)"},{"name":"High Gloss Enamel Peach","size":"1L","price":84.43,"old":84.43,"status":"confirmed","note":"AUTO (group 'Colours' price)"},{"name":"High Gloss Enamel Peach","size":"20L","price":992.12,"old":992.12,"status":"confirmed","note":"AUTO (group 'Colours' price)"},{"name":"High Gloss Enamel Peach","size":"500ML","price":57.0,"old":57.0,"status":"confirmed","note":"AUTO (group 'Colours' price)"},{"name":"High Gloss Enamel Peach","size":"5L","price":300.0,"old":300.0,"status":"confirmed","note":"AUTO (group 'Colours' price)"},{"name":"High Gloss Enamel Pwd Brown","size":"1L","price":84.43,"old":84.43,"status":"confirmed","note":"AUTO (group 'Colours' price)"},{"name":"High Gloss Enamel R Yellow","size":"5L","price":300.0,"old":300.0,"status":"confirmed","note":"AUTO (group 'Colours' price)"},{"name":"High Gloss Enamel Red","size":"1L","price":84.43,"old":84.43,"status":"confirmed","note":"AUTO (group 'Colours' price)"},{"name":"High Gloss Enamel S Blue","size":"1L","price":84.43,"old":84.43,"status":"confirmed","note":"AUTO (group 'Colours' price)"},{"name":"High Gloss Enamel S Blue","size":"500ML","price":57.0,"old":57.0,"status":"confirmed","note":"AUTO (group 'Colours' price)"},{"name":"High Gloss Enamel S Blue","size":"5L","price":300.0,"old":300.0,"status":"confirmed","note":"AUTO (group 'Colours' price)"},{"name":"High Gloss Enamel S Green","size":"1L","price":84.43,"old":84.43,"status":"confirmed","note":"AUTO (group 'Colours' price)"},{"name":"High Gloss Enamel S Green","size":"500ML","price":57.0,"old":57.0,"status":"confirmed","note":"AUTO (group 'Colours' price)"},{"name":"High Gloss Enamel S Green","size":"5L","price":300.0,"old":300.0,"status":"confirmed","note":"AUTO (group 'Colours' price)"},{"name":"High Gloss Enamel S Red","size":"1L","price":84.43,"old":84.43,"status":"confirmed","note":"AUTO (group 'Colours' price)"},{"name":"High Gloss Enamel S Red","size":"20L","price":992.12,"old":992.12,"status":"confirmed","note":"AUTO (group 'Colours' price)"},{"name":"High Gloss Enamel S Red","size":"500ML","price":57.0,"old":57.0,"status":"confirmed","note":"AUTO (group 'Colours' price)"},{"name":"High Gloss Enamel S Red","size":"5L","price":300.0,"old":300.0,"status":"confirmed","note":"AUTO (group 'Colours' price)"},{"name":"High Gloss Enamel Spring Green","size":"1L","price":84.43,"old":84.43,"status":"confirmed","note":"AUTO (group 'Colours' price)"},{"name":"High Gloss Enamel Spring Green","size":"20L","price":992.12,"old":992.12,"status":"confirmed","note":"AUTO (group 'Colours' price)"},{"name":"High Gloss Enamel Summer Blue","size":"1L","price":84.43,"old":84.43,"status":"confirmed","note":"AUTO (group 'Colours' price)"},{"name":"High Gloss Enamel Summer Blue","size":"20L","price":992.12,"old":992.12,"status":"confirmed","note":"AUTO (group 'Colours' price)"},{"name":"High Gloss Enamel Terracotta","size":"5L","price":300.0,"old":300.0,"status":"confirmed","note":"AUTO (group 'Colours' price)"},{"name":"High Gloss Enamel White","size":"1L","price":84.43,"old":84.43,"status":"confirmed","note":"AUTO (group 'Colours' price)"},{"name":"High Gloss Enamel White","size":"500ML","price":57.0,"old":57.0,"status":"confirmed","note":"AUTO (exact/slash colour match)"},{"name":"High Gloss Enamel Yellow","size":"1L","price":84.43,"old":84.43,"status":"confirmed","note":"AUTO (group 'Colours' price)"},{"name":"Hypersteel Q.D Oxide Primer Grey","size":"1L","price":48.44,"old":48.44,"status":"notfound","note":"NOT FOUND (no PDF row for this product+size)"},{"name":"Hypersteel Rainproof Burgundy","size":"5L","price":103.5,"old":103.5,"status":"confirmed","note":"AUTO (verified-uniform group cascade)"},{"name":"Master Decorators African Kudu","size":"20L","price":560.0,"old":560.0,"status":"confirmed","note":"AUTO (group 'Colours' price)"},{"name":"Master Decorators African Kudu","size":"5L","price":196.95,"old":196.95,"status":"confirmed","note":"AUTO (group 'Colours' price)"},{"name":"Master Decorators Autumn Wheat","size":"20L","price":560.0,"old":560.0,"status":"confirmed","note":"AUTO (group 'Colours' price)"},{"name":"Master Decorators Autumn Wheat","size":"5L","price":196.95,"old":196.95,"status":"confirmed","note":"AUTO (group 'Colours' price)"},{"name":"Master Decorators Black","size":"20L","price":560.0,"old":560.0,"status":"confirmed","note":"AUTO (group 'Colours' price)"},{"name":"Master Decorators Black","size":"5L","price":196.95,"old":196.95,"status":"confirmed","note":"AUTO (group 'Colours' price)"},{"name":"Master Decorators Brazil Nut","size":"20L","price":560.0,"old":560.0,"status":"confirmed","note":"AUTO (group 'Colours' price)"},{"name":"Master Decorators Brazil Nut","size":"5L","price":196.95,"old":196.95,"status":"confirmed","note":"AUTO (group 'Colours' price)"},{"name":"Master Decorators Brick Red","size":"20L","price":560.0,"old":560.0,"status":"confirmed","note":"AUTO (group 'Colours' price)"},{"name":"Master Decorators Brick Red","size":"5L","price":196.95,"old":196.95,"status":"confirmed","note":"AUTO (group 'Colours' price)"},{"name":"Master Decorators Casper Grey","size":"20L","price":560.0,"old":560.0,"status":"confirmed","note":"AUTO (group 'Colours' price)"},{"name":"Master Decorators Casper Grey","size":"5L","price":196.95,"old":196.95,"status":"confirmed","note":"AUTO (group 'Colours' price)"},{"name":"Master Decorators Cream","size":"20L","price":560.0,"old":560.0,"status":"confirmed","note":"AUTO (exact/slash colour match)"},{"name":"Master Decorators Cream","size":"5L","price":179.73,"old":179.73,"status":"confirmed","note":"AUTO (exact/slash colour match)"},{"name":"Master Decorators Desert Camel","size":"20L","price":560.0,"old":560.0,"status":"confirmed","note":"AUTO (group 'Colours' price)"},{"name":"Master Decorators Desert Camel","size":"5L","price":196.95,"old":196.95,"status":"confirmed","note":"AUTO (group 'Colours' price)"},{"name":"Master Decorators Espresso Grey","size":"20L","price":560.0,"old":560.0,"status":"confirmed","note":"AUTO (group 'Colours' price)"},{"name":"Master Decorators Espresso Grey","size":"5L","price":196.95,"old":196.95,"status":"confirmed","note":"AUTO (group 'Colours' price)"},{"name":"Master Decorators Fossil Green","size":"20L","price":560.0,"old":560.0,"status":"confirmed","note":"AUTO (group 'Colours' price)"},{"name":"Master Decorators Fossil Green","size":"5L","price":196.95,"old":196.95,"status":"confirmed","note":"AUTO (group 'Colours' price)"},{"name":"Master Decorators Hazel","size":"20L","price":560.0,"old":560.0,"status":"confirmed","note":"AUTO (group 'Colours' price)"},{"name":"Master Decorators Jaipur","size":"20L","price":560.0,"old":560.0,"status":"confirmed","note":"AUTO (group 'Colours' price)"},{"name":"Master Decorators Jaipur","size":"5L","price":196.95,"old":196.95,"status":"confirmed","note":"AUTO (group 'Colours' price)"},{"name":"Master Decorators Kalahari","size":"20L","price":560.0,"old":560.0,"status":"confirmed","note":"AUTO (group 'Colours' price)"},{"name":"Master Decorators Kalahari","size":"5L","price":196.95,"old":196.95,"status":"confirmed","note":"AUTO (group 'Colours' price)"},{"name":"Master Decorators Kit Kat Red","size":"20L","price":560.0,"old":560.0,"status":"confirmed","note":"AUTO (group 'Colours' price)"},{"name":"Master Decorators Misty Storm","size":"20L","price":560.0,"old":560.0,"status":"confirmed","note":"AUTO (group 'Colours' price)"},{"name":"Master Decorators Misty Storm","size":"5L","price":196.95,"old":196.95,"status":"confirmed","note":"AUTO (group 'Colours' price)"},{"name":"Master Decorators Moroccan Tan","size":"20L","price":560.0,"old":560.0,"status":"confirmed","note":"AUTO (group 'Colours' price)"},{"name":"Master Decorators Moroccan Tan","size":"5L","price":196.95,"old":196.95,"status":"confirmed","note":"AUTO (group 'Colours' price)"},{"name":"Master Decorators Night Sky","size":"20L","price":560.0,"old":560.0,"status":"confirmed","note":"AUTO (group 'Colours' price)"},{"name":"Master Decorators Night Sky","size":"5L","price":196.95,"old":196.95,"status":"confirmed","note":"AUTO (group 'Colours' price)"},{"name":"Master Decorators Peach","size":"20L","price":560.0,"old":560.0,"status":"confirmed","note":"AUTO (group 'Colours' price)"},{"name":"Master Decorators Peach","size":"5L","price":196.95,"old":196.95,"status":"confirmed","note":"AUTO (group 'Colours' price)"},{"name":"Master Decorators Pebble Stone","size":"20L","price":560.0,"old":560.0,"status":"confirmed","note":"AUTO (group 'Colours' price)"},{"name":"Master Decorators Pebble Stone","size":"5L","price":196.95,"old":196.95,"status":"confirmed","note":"AUTO (group 'Colours' price)"},{"name":"Master Decorators Shiloh","size":"20L","price":560.0,"old":560.0,"status":"confirmed","note":"AUTO (group 'Colours' price)"},{"name":"Master Decorators Shiloh","size":"5L","price":196.95,"old":196.95,"status":"confirmed","note":"AUTO (group 'Colours' price)"},{"name":"Master Decorators Silver","size":"20L","price":560.0,"old":560.0,"status":"confirmed","note":"AUTO (group 'Colours' price)"},{"name":"Master Decorators Silver","size":"5L","price":196.95,"old":196.95,"status":"confirmed","note":"AUTO (group 'Colours' price)"},{"name":"Master Decorators Stone Grey","size":"20L","price":560.0,"old":560.0,"status":"confirmed","note":"AUTO (group 'Colours' price)"},{"name":"Master Decorators Stone Grey","size":"5L","price":196.95,"old":196.95,"status":"confirmed","note":"AUTO (group 'Colours' price)"},{"name":"Master Decorators Sunset Glow","size":"20L","price":560.0,"old":560.0,"status":"confirmed","note":"AUTO (group 'Colours' price)"},{"name":"Master Decorators Sunset Glow","size":"5L","price":196.95,"old":196.95,"status":"confirmed","note":"AUTO (group 'Colours' price)"},{"name":"Master Decorators Sunset Yellow","size":"20L","price":560.0,"old":560.0,"status":"confirmed","note":"AUTO (group 'Colours' price)"},{"name":"Master Decorators Sunset Yellow","size":"5L","price":196.95,"old":196.95,"status":"confirmed","note":"AUTO (group 'Colours' price)"},{"name":"Master Decorators Tennessee","size":"20L","price":560.0,"old":560.0,"status":"confirmed","note":"AUTO (group 'Colours' price)"},{"name":"Master Decorators Tennessee","size":"5L","price":196.95,"old":196.95,"status":"confirmed","note":"AUTO (group 'Colours' price)"},{"name":"Master Decorators Terracotta","size":"20L","price":560.0,"old":560.0,"status":"confirmed","note":"AUTO (group 'Colours' price)"},{"name":"Master Decorators Terracotta","size":"5L","price":196.95,"old":196.95,"status":"confirmed","note":"AUTO (group 'Colours' price)"},{"name":"Master Decorators Umhlanga Tan","size":"20L","price":560.0,"old":560.0,"status":"confirmed","note":"AUTO (group 'Colours' price)"},{"name":"Master Decorators Umhlanga Tan","size":"5L","price":196.95,"old":196.95,"status":"confirmed","note":"AUTO (group 'Colours' price)"},{"name":"Master Decorators White","size":"20L","price":560.0,"old":560.0,"status":"confirmed","note":"AUTO (exact/slash colour match)"},{"name":"Master Decorators White","size":"5L","price":179.73,"old":179.73,"status":"confirmed","note":"AUTO (exact/slash colour match)"},{"name":"Master Decorators Wild Iris","size":"20L","price":560.0,"old":560.0,"status":"confirmed","note":"AUTO (group 'Colours' price)"},{"name":"Master Decorators Wild Iris","size":"5L","price":196.95,"old":196.95,"status":"confirmed","note":"AUTO (group 'Colours' price)"},{"name":"Membrane 200MM Free","size":"","price":36.0,"old":36.0,"status":"confirmed","note":"AUTO (verified-uniform group cascade)"},{"name":"Membrane 75MM Free","size":"","price":34.88,"old":34.88,"status":"notfound","note":"NOT FOUND (no PDF row for this product+size)"},{"name":"Oxide Brown 500GM","size":"","price":170.33,"old":170.33,"status":"confirmed","note":"AUTO (exact/slash colour match)"},{"name":"Oxide Green 500GM","size":"","price":548.39,"old":548.39,"status":"confirmed","note":"AUTO (exact/slash colour match)"},{"name":"Oxide Red 500GM","size":"","price":165.0,"old":165.0,"status":"confirmed","note":"AUTO (exact/slash colour match)"},{"name":"Oxide Yellow 500GM","size":"","price":170.33,"old":170.33,"status":"confirmed","note":"AUTO (exact/slash colour match)"},{"name":"Pick 'N Save Econo Black","size":"5L","price":245.0,"old":245.0,"status":"confirmed","note":"AUTO (group 'Colours' price)"},{"name":"Pick 'N Save Econo Blue","size":"5L","price":245.0,"old":245.0,"status":"confirmed","note":"AUTO (group 'Colours' price)"},{"name":"Pick 'N Save Econo Burgundy","size":"5L","price":245.0,"old":245.0,"status":"confirmed","note":"AUTO (group 'Colours' price)"},{"name":"Pick 'N Save Econo Cream","size":"5L","price":245.0,"old":245.0,"status":"confirmed","note":"AUTO (exact/slash colour match)"},{"name":"Pick 'N Save Econo G Brown","size":"5L","price":245.0,"old":245.0,"status":"confirmed","note":"AUTO (group 'Colours' price)"},{"name":"Pick 'N Save Econo Green","size":"5L","price":245.0,"old":245.0,"status":"confirmed","note":"AUTO (group 'Colours' price)"},{"name":"Pick 'N Save Econo Peach","size":"5L","price":245.0,"old":245.0,"status":"confirmed","note":"AUTO (group 'Colours' price)"},{"name":"Pick 'N Save Econo Pink","size":"5L","price":245.0,"old":245.0,"status":"confirmed","note":"AUTO (group 'Colours' price)"},{"name":"Pick 'N Save Econo Pwd Brown","size":"5L","price":245.0,"old":245.0,"status":"confirmed","note":"AUTO (group 'Colours' price)"},{"name":"Pick 'N Save Econo S Red","size":"5L","price":245.0,"old":245.0,"status":"confirmed","note":"AUTO (group 'Colours' price)"},{"name":"Pick 'N Save Econo White","size":"5L","price":245.0,"old":245.0,"status":"confirmed","note":"AUTO (exact/slash colour match)"},{"name":"Pick 'N Save Econo Yellow","size":"5L","price":245.0,"old":245.0,"status":"confirmed","note":"AUTO (group 'Colours' price)"},{"name":"Putty 12X2KG","size":"","price":275.0,"old":275.0,"status":"confirmed","note":"AUTO (default price - only unnamed-colour PDF row in group)"},{"name":"Q.D Black Oxide Primer Black","size":"1L","price":102.48,"old":90.0,"status":"changed","note":"AUTO (exact/slash colour match)"},{"name":"Q.D Black Oxide Primer Black","size":"5L","price":298.15,"old":298.15,"status":"confirmed","note":"AUTO (exact/slash colour match)"},{"name":"Q.D Clear Base","size":"5L","price":315.0,"old":315.0,"status":"skipped","note":"SKIPPED (special variant: PLAIN/BASE/CLEAR)"},{"name":"Q.D Clear Base Base","size":"1L","price":90.0,"old":90.0,"status":"skipped","note":"SKIPPED (special variant: PLAIN/BASE/CLEAR)"},{"name":"Q.D Enamel Azure Blue","size":"1L","price":90.0,"old":90.0,"status":"notfound","note":"NOT FOUND (this colour not named in the PDF update)"},{"name":"Q.D Enamel Bronze","size":"1L","price":90.0,"old":90.0,"status":"confirmed","note":"AUTO (exact/slash colour match)"},{"name":"Q.D Enamel Bronze","size":"5L","price":315.0,"old":315.0,"status":"confirmed","note":"AUTO (exact/slash colour match)"},{"name":"Q.D Enamel Bronze 1L (PLAIN)","size":"","price":90.0,"old":90.0,"status":"skipped","note":"SKIPPED (special variant: PLAIN/BASE/CLEAR)"},{"name":"Q.D Enamel Bronze 5L (PLAIN)","size":"","price":315.0,"old":315.0,"status":"skipped","note":"SKIPPED (special variant: PLAIN/BASE/CLEAR)"},{"name":"Q.D Enamel Cat Yellow","size":"1L","price":120.0,"old":120.0,"status":"confirmed","note":"AUTO (exact/slash colour match)"},{"name":"Q.D Enamel Copper","size":"1L","price":120.0,"old":120.0,"status":"notfound","note":"NOT FOUND (this colour not named in the PDF update)"},{"name":"Q.D Enamel Dark Grey","size":"1L","price":90.0,"old":90.0,"status":"confirmed","note":"AUTO (exact/slash colour match)"},{"name":"Q.D Enamel G Brown","size":"1L","price":90.0,"old":90.0,"status":"confirmed","note":"AUTO (exact/slash colour match)"},{"name":"Q.D Enamel G Brown 1L (PLAIN)","size":"","price":90.0,"old":90.0,"status":"skipped","note":"SKIPPED (special variant: PLAIN/BASE/CLEAR)"},{"name":"Q.D Enamel Green","size":"1L","price":90.0,"old":90.0,"status":"confirmed","note":"AUTO (exact/slash colour match)"},{"name":"Q.D Enamel Green 1L (PLAIN)","size":"","price":90.0,"old":90.0,"status":"skipped","note":"SKIPPED (special variant: PLAIN/BASE/CLEAR)"},{"name":"Q.D Enamel Jd Green","size":"1L","price":120.0,"old":120.0,"status":"confirmed","note":"AUTO (exact/slash colour match)"},{"name":"Q.D Enamel Light Bronze","size":"1L","price":90.0,"old":90.0,"status":"notfound","note":"NOT FOUND (this colour not named in the PDF update)"},{"name":"Q.D Enamel Pwd Brown","size":"1L","price":90.0,"old":90.0,"status":"confirmed","note":"AUTO (exact/slash colour match)"},{"name":"Q.D Enamel Pwd Brown 1L (PLAIN)","size":"","price":90.0,"old":90.0,"status":"skipped","note":"SKIPPED (special variant: PLAIN/BASE/CLEAR)"},{"name":"Q.D Enamel Red","size":"5L","price":360.0,"old":298.15,"status":"changed","note":"AUTO (exact/slash colour match)"},{"name":"Q.D Enamel Royal Blue","size":"1L","price":120.0,"old":120.0,"status":"confirmed","note":"AUTO (exact/slash colour match)"},{"name":"Q.D Enamel Silver","size":"1L","price":120.0,"old":120.0,"status":"confirmed","note":"AUTO (exact/slash colour match)"},{"name":"Q.D Enamel White","size":"1L","price":90.0,"old":90.0,"status":"confirmed","note":"AUTO (exact/slash colour match)"},{"name":"Q.D Enamel White","size":"5L","price":315.0,"old":315.0,"status":"confirmed","note":"AUTO (exact/slash colour match)"},{"name":"Q.D Oxide Primer Red","size":"1L","price":90.0,"old":90.0,"status":"confirmed","note":"AUTO (exact/slash colour match)"},{"name":"Q.D Oxide Primer Red","size":"5L","price":298.15,"old":298.15,"status":"confirmed","note":"AUTO (exact/slash colour match)"},{"name":"Q.D Oxide Primer Red 1L (PLAIN)","size":"","price":90.0,"old":90.0,"status":"skipped","note":"SKIPPED (special variant: PLAIN/BASE/CLEAR)"},{"name":"Rainproof Black","size":"1L","price":48.44,"old":48.44,"status":"confirmed","note":"AUTO (verified-uniform group cascade)"},{"name":"Rainproof Black","size":"5L","price":103.5,"old":103.5,"status":"confirmed","note":"AUTO (verified-uniform group cascade)"},{"name":"Rainproof Blue","size":"1L","price":48.44,"old":48.44,"status":"confirmed","note":"AUTO (verified-uniform group cascade)"},{"name":"Rainproof Blue","size":"5L","price":103.5,"old":103.5,"status":"confirmed","note":"AUTO (verified-uniform group cascade)"},{"name":"Rainproof Brown","size":"1L","price":48.44,"old":48.44,"status":"confirmed","note":"AUTO (verified-uniform group cascade)"},{"name":"Rainproof Brown","size":"5L","price":103.5,"old":103.5,"status":"confirmed","note":"AUTO (verified-uniform group cascade)"},{"name":"Rainproof Burgundy","size":"1L","price":48.44,"old":48.44,"status":"confirmed","note":"AUTO (verified-uniform group cascade)"},{"name":"Rainproof Burgundy","size":"5L","price":103.5,"old":103.5,"status":"confirmed","note":"AUTO (verified-uniform group cascade)"},{"name":"Rainproof Charcoal","size":"1L","price":48.44,"old":48.44,"status":"confirmed","note":"AUTO (verified-uniform group cascade)"},{"name":"Rainproof Charcoal","size":"5L","price":103.5,"old":103.5,"status":"confirmed","note":"AUTO (verified-uniform group cascade)"},{"name":"Rainproof Green","size":"1L","price":48.44,"old":48.44,"status":"confirmed","note":"AUTO (verified-uniform group cascade)"},{"name":"Rainproof Green","size":"5L","price":103.5,"old":103.5,"status":"confirmed","note":"AUTO (verified-uniform group cascade)"},{"name":"Rainproof Grey","size":"1L","price":48.44,"old":48.44,"status":"confirmed","note":"AUTO (verified-uniform group cascade)"},{"name":"Rainproof Grey","size":"5L","price":103.5,"old":103.5,"status":"confirmed","note":"AUTO (verified-uniform group cascade)"},{"name":"Rainproof Red","size":"1L","price":48.44,"old":48.44,"status":"confirmed","note":"AUTO (verified-uniform group cascade)"},{"name":"Rainproof Red","size":"5L","price":103.5,"old":103.5,"status":"confirmed","note":"AUTO (verified-uniform group cascade)"},{"name":"Rainproof Terracotta","size":"1L","price":48.44,"old":48.44,"status":"confirmed","note":"AUTO (verified-uniform group cascade)"},{"name":"Rainproof Terracotta","size":"5L","price":103.5,"old":103.5,"status":"confirmed","note":"AUTO (verified-uniform group cascade)"},{"name":"Rainproof White","size":"1L","price":48.44,"old":48.44,"status":"confirmed","note":"AUTO (verified-uniform group cascade)"},{"name":"Rainproof White","size":"5L","price":103.5,"old":103.5,"status":"confirmed","note":"AUTO (verified-uniform group cascade)"},{"name":"Stainers Black","size":"100ML","price":332.7,"old":332.7,"status":"confirmed","note":"AUTO (default price - only unnamed-colour PDF row in group)"},{"name":"Stoep Black","size":"5L","price":454.56,"old":454.56,"status":"confirmed","note":"AUTO (default price - only unnamed-colour PDF row in group)"},{"name":"Stoep Brown","size":"5L","price":454.56,"old":454.56,"status":"confirmed","note":"AUTO (default price - only unnamed-colour PDF row in group)"},{"name":"Stoep Burgundy","size":"5L","price":454.56,"old":454.56,"status":"confirmed","note":"AUTO (default price - only unnamed-colour PDF row in group)"},{"name":"Stoep Charcoal","size":"5L","price":454.56,"old":454.56,"status":"confirmed","note":"AUTO (default price - only unnamed-colour PDF row in group)"},{"name":"Stoep Green","size":"5L","price":454.56,"old":454.56,"status":"confirmed","note":"AUTO (default price - only unnamed-colour PDF row in group)"},{"name":"Stoep Grey","size":"5L","price":454.56,"old":454.56,"status":"confirmed","note":"AUTO (default price - only unnamed-colour PDF row in group)"},{"name":"Stoep Red","size":"5L","price":454.56,"old":454.56,"status":"confirmed","note":"AUTO (default price - only unnamed-colour PDF row in group)"},{"name":"Stoep Terracotta","size":"5L","price":454.56,"old":454.56,"status":"confirmed","note":"AUTO (default price - only unnamed-colour PDF row in group)"},{"name":"Ultimate Shine Apric","size":"500ML","price":82.46,"old":82.46,"status":"confirmed","note":"AUTO (group 'Colours' price)"},{"name":"Ultimate Shine Apricot","size":"1L","price":119.27,"old":119.27,"status":"confirmed","note":"AUTO (group 'Colours' price)"},{"name":"Ultimate Shine Apricot","size":"5L","price":477.39,"old":477.39,"status":"notfound","note":"NOT FOUND (no PDF row for this product+size)"},{"name":"Ultimate Shine B Green","size":"1L","price":119.27,"old":119.27,"status":"confirmed","note":"AUTO (group 'Colours' price)"},{"name":"Ultimate Shine B Green","size":"5L","price":477.39,"old":477.39,"status":"notfound","note":"NOT FOUND (no PDF row for this product+size)"},{"name":"Ultimate Shine B Yellow","size":"1L","price":119.27,"old":119.27,"status":"confirmed","note":"AUTO (group 'Colours' price)"},{"name":"Ultimate Shine B Yellow","size":"5L","price":477.39,"old":477.39,"status":"notfound","note":"NOT FOUND (no PDF row for this product+size)"},{"name":"Ultimate Shine Base Base","size":"5L","price":119.27,"old":119.27,"status":"skipped","note":"SKIPPED (special variant: PLAIN/BASE/CLEAR)"},{"name":"Ultimate Shine Base Base 5L (BASE)","size":"","price":477.39,"old":477.39,"status":"skipped","note":"SKIPPED (special variant: PLAIN/BASE/CLEAR)"},{"name":"Ultimate Shine Black","size":"1L","price":119.27,"old":119.27,"status":"confirmed","note":"AUTO (group 'Colours' price)"},{"name":"Ultimate Shine Black","size":"5L","price":248.55,"old":248.55,"status":"notfound","note":"NOT FOUND (no PDF row for this product+size)"},{"name":"Ultimate Shine Burgundy","size":"1L","price":119.27,"old":119.27,"status":"confirmed","note":"AUTO (group 'Colours' price)"},{"name":"Ultimate Shine Burgundy","size":"500ML","price":82.46,"old":82.46,"status":"confirmed","note":"AUTO (group 'Colours' price)"},{"name":"Ultimate Shine Burgundy","size":"5L","price":477.39,"old":477.39,"status":"notfound","note":"NOT FOUND (no PDF row for this product+size)"},{"name":"Ultimate Shine Cream","size":"1L","price":119.27,"old":119.27,"status":"confirmed","note":"AUTO (group 'Colours' price)"},{"name":"Ultimate Shine Cream","size":"500ML","price":82.46,"old":82.46,"status":"confirmed","note":"AUTO (group 'Colours' price)"},{"name":"Ultimate Shine Cream","size":"5L","price":477.39,"old":477.39,"status":"notfound","note":"NOT FOUND (no PDF row for this product+size)"},{"name":"Ultimate Shine D Blue","size":"1L","price":119.27,"old":119.27,"status":"confirmed","note":"AUTO (group 'Colours' price)"},{"name":"Ultimate Shine D Blue","size":"500ML","price":82.46,"old":82.46,"status":"confirmed","note":"AUTO (group 'Colours' price)"},{"name":"Ultimate Shine D Blue","size":"5L","price":477.39,"old":477.39,"status":"notfound","note":"NOT FOUND (no PDF row for this product+size)"},{"name":"Ultimate Shine F Blue","size":"1L","price":119.27,"old":119.27,"status":"confirmed","note":"AUTO (group 'Colours' price)"},{"name":"Ultimate Shine F Blue","size":"500ML","price":82.46,"old":82.46,"status":"confirmed","note":"AUTO (group 'Colours' price)"},{"name":"Ultimate Shine F Blue","size":"5L","price":477.39,"old":477.39,"status":"notfound","note":"NOT FOUND (no PDF row for this product+size)"},{"name":"Ultimate Shine G Brown","size":"1L","price":119.27,"old":119.27,"status":"confirmed","note":"AUTO (group 'Colours' price)"},{"name":"Ultimate Shine G Brown","size":"500ML","price":82.46,"old":82.46,"status":"confirmed","note":"AUTO (group 'Colours' price)"},{"name":"Ultimate Shine G Brown","size":"5L","price":477.39,"old":477.39,"status":"notfound","note":"NOT FOUND (no PDF row for this product+size)"},{"name":"Ultimate Shine G Yellow","size":"1L","price":119.27,"old":119.27,"status":"confirmed","note":"AUTO (group 'Colours' price)"},{"name":"Ultimate Shine G Yellow","size":"500ML","price":82.46,"old":82.46,"status":"confirmed","note":"AUTO (group 'Colours' price)"},{"name":"Ultimate Shine G Yellow","size":"5L","price":477.39,"old":477.39,"status":"notfound","note":"NOT FOUND (no PDF row for this product+size)"},{"name":"Ultimate Shine Grape Sorbet","size":"5L","price":477.39,"old":477.39,"status":"notfound","note":"NOT FOUND (no PDF row for this product+size)"},{"name":"Ultimate Shine Green","size":"500ML","price":82.46,"old":82.46,"status":"confirmed","note":"AUTO (group 'Colours' price)"},{"name":"Ultimate Shine Grey","size":"1L","price":119.27,"old":119.27,"status":"confirmed","note":"AUTO (group 'Colours' price)"},{"name":"Ultimate Shine Grey","size":"500ML","price":82.46,"old":82.46,"status":"confirmed","note":"AUTO (group 'Colours' price)"},{"name":"Ultimate Shine Grey","size":"5L","price":477.39,"old":477.39,"status":"notfound","note":"NOT FOUND (no PDF row for this product+size)"},{"name":"Ultimate Shine Ivory","size":"1L","price":119.27,"old":119.27,"status":"confirmed","note":"AUTO (group 'Colours' price)"},{"name":"Ultimate Shine Ivory","size":"500ML","price":82.46,"old":82.46,"status":"confirmed","note":"AUTO (group 'Colours' price)"},{"name":"Ultimate Shine Ivory","size":"5L","price":477.39,"old":477.39,"status":"notfound","note":"NOT FOUND (no PDF row for this product+size)"},{"name":"Ultimate Shine Kit Kat Red","size":"5L","price":477.39,"old":477.39,"status":"notfound","note":"NOT FOUND (no PDF row for this product+size)"},{"name":"Ultimate Shine L Blue","size":"1L","price":119.27,"old":119.27,"status":"confirmed","note":"AUTO (group 'Colours' price)"},{"name":"Ultimate Shine L Blue","size":"500ML","price":82.46,"old":82.46,"status":"confirmed","note":"AUTO (group 'Colours' price)"},{"name":"Ultimate Shine L Blue","size":"5L","price":477.39,"old":477.39,"status":"notfound","note":"NOT FOUND (no PDF row for this product+size)"},{"name":"Ultimate Shine L Brown","size":"1L","price":119.27,"old":119.27,"status":"confirmed","note":"AUTO (group 'Colours' price)"},{"name":"Ultimate Shine L Brown","size":"500ML","price":82.46,"old":82.46,"status":"confirmed","note":"AUTO (group 'Colours' price)"},{"name":"Ultimate Shine L Brown","size":"5L","price":477.39,"old":477.39,"status":"notfound","note":"NOT FOUND (no PDF row for this product+size)"},{"name":"Ultimate Shine L Grey","size":"1L","price":119.27,"old":119.27,"status":"confirmed","note":"AUTO (group 'Colours' price)"},{"name":"Ultimate Shine Orange","size":"1L","price":119.27,"old":119.27,"status":"confirmed","note":"AUTO (group 'Colours' price)"},{"name":"Ultimate Shine Orange","size":"500ML","price":82.46,"old":82.46,"status":"confirmed","note":"AUTO (group 'Colours' price)"},{"name":"Ultimate Shine Orange","size":"5L","price":477.39,"old":477.39,"status":"notfound","note":"NOT FOUND (no PDF row for this product+size)"},{"name":"Ultimate Shine P O Red","size":"1L","price":119.27,"old":119.27,"status":"confirmed","note":"AUTO (group 'Colours' price)"},{"name":"Ultimate Shine P O Red","size":"500ML","price":82.46,"old":82.46,"status":"confirmed","note":"AUTO (group 'Colours' price)"},{"name":"Ultimate Shine P O Red","size":"5L","price":477.39,"old":477.39,"status":"notfound","note":"NOT FOUND (no PDF row for this product+size)"},{"name":"Ultimate Shine Peach","size":"1L","price":119.27,"old":119.27,"status":"confirmed","note":"AUTO (group 'Colours' price)"},{"name":"Ultimate Shine Peach","size":"500ML","price":82.46,"old":82.46,"status":"confirmed","note":"AUTO (group 'Colours' price)"},{"name":"Ultimate Shine Peach","size":"5L","price":477.39,"old":477.39,"status":"notfound","note":"NOT FOUND (no PDF row for this product+size)"},{"name":"Ultimate Shine Pink","size":"1L","price":119.27,"old":119.27,"status":"confirmed","note":"AUTO (group 'Colours' price)"},{"name":"Ultimate Shine Pink","size":"500ML","price":82.46,"old":82.46,"status":"confirmed","note":"AUTO (group 'Colours' price)"},{"name":"Ultimate Shine Pink","size":"5L","price":477.39,"old":477.39,"status":"notfound","note":"NOT FOUND (no PDF row for this product+size)"},{"name":"Ultimate Shine Pwd Brown","size":"1L","price":119.27,"old":119.27,"status":"confirmed","note":"AUTO (group 'Colours' price)"},{"name":"Ultimate Shine Pwd Brown","size":"500ML","price":82.46,"old":82.46,"status":"confirmed","note":"AUTO (group 'Colours' price)"},{"name":"Ultimate Shine Pwd Brown","size":"5L","price":477.39,"old":477.39,"status":"notfound","note":"NOT FOUND (no PDF row for this product+size)"},{"name":"Ultimate Shine Red","size":"5L","price":477.39,"old":477.39,"status":"notfound","note":"NOT FOUND (no PDF row for this product+size)"},{"name":"Ultimate Shine S Blue","size":"1L","price":119.27,"old":119.27,"status":"confirmed","note":"AUTO (group 'Colours' price)"},{"name":"Ultimate Shine S Blue","size":"500ML","price":82.46,"old":82.46,"status":"confirmed","note":"AUTO (group 'Colours' price)"},{"name":"Ultimate Shine S Blue","size":"5L","price":477.39,"old":477.39,"status":"notfound","note":"NOT FOUND (no PDF row for this product+size)"},{"name":"Ultimate Shine S Green","size":"1L","price":119.27,"old":119.27,"status":"confirmed","note":"AUTO (group 'Colours' price)"},{"name":"Ultimate Shine S Green","size":"500ML","price":82.46,"old":82.46,"status":"confirmed","note":"AUTO (group 'Colours' price)"},{"name":"Ultimate Shine S Green","size":"5L","price":477.39,"old":477.39,"status":"notfound","note":"NOT FOUND (no PDF row for this product+size)"},{"name":"Ultimate Shine S Red","size":"1L","price":119.27,"old":119.27,"status":"confirmed","note":"AUTO (group 'Colours' price)"},{"name":"Ultimate Shine S Red","size":"500ML","price":82.46,"old":82.46,"status":"confirmed","note":"AUTO (group 'Colours' price)"},{"name":"Ultimate Shine Silver","size":"1L","price":119.27,"old":119.27,"status":"confirmed","note":"AUTO (group 'Colours' price)"},{"name":"Ultimate Shine Silver","size":"500ML","price":82.46,"old":82.46,"status":"confirmed","note":"AUTO (group 'Colours' price)"},{"name":"Ultimate Shine Silver","size":"5L","price":477.39,"old":477.39,"status":"notfound","note":"NOT FOUND (no PDF row for this product+size)"},{"name":"Ultimate Shine White","size":"5L","price":248.55,"old":248.55,"status":"notfound","note":"NOT FOUND (no PDF row for this product+size)"},{"name":"Ultimate Shine Yellow","size":"500ML","price":82.46,"old":82.46,"status":"confirmed","note":"AUTO (group 'Colours' price)"},{"name":"Univ Roof Plain Bucket Burgundy","size":"20L","price":590.0,"old":590.0,"status":"skipped","note":"SKIPPED (special variant: PLAIN/BASE/CLEAR)"},{"name":"Univ Roof Plain Bucket Charcoal","size":"20L","price":590.0,"old":590.0,"status":"skipped","note":"SKIPPED (special variant: PLAIN/BASE/CLEAR)"},{"name":"Univ Roof Plain Bucket Grey","size":"20L","price":590.0,"old":590.0,"status":"skipped","note":"SKIPPED (special variant: PLAIN/BASE/CLEAR)"},{"name":"Univ Roof Plain Bucket Red","size":"20L","price":590.0,"old":590.0,"status":"skipped","note":"SKIPPED (special variant: PLAIN/BASE/CLEAR)"},{"name":"Univ Undercoat White","size":"1L","price":114.07,"old":114.07,"status":"confirmed","note":"AUTO (default price - only unnamed-colour PDF row in group)"},{"name":"Univ Undercoat White","size":"5L","price":425.26,"old":425.26,"status":"notfound","note":"NOT FOUND (no PDF row for this product+size)"},{"name":"Universal Roof Albany","size":"20L","price":590.0,"old":590.0,"status":"confirmed","note":"AUTO (group 'Colours' price)"},{"name":"Universal Roof Albany","size":"5L","price":194.24,"old":194.24,"status":"notfound","note":"NOT FOUND (no PDF row for this product+size)"},{"name":"Universal Roof Black","size":"20L","price":590.0,"old":590.0,"status":"confirmed","note":"AUTO (group 'Colours' price)"},{"name":"Universal Roof Black","size":"20L","price":590.0,"old":590.0,"status":"confirmed","note":"AUTO (group 'Colours' price)"},{"name":"Universal Roof Black","size":"5L","price":194.24,"old":194.24,"status":"notfound","note":"NOT FOUND (no PDF row for this product+size)"},{"name":"Universal Roof Brown","size":"20L","price":590.0,"old":590.0,"status":"confirmed","note":"AUTO (group 'Colours' price)"},{"name":"Universal Roof Brown","size":"5L","price":194.24,"old":194.24,"status":"notfound","note":"NOT FOUND (no PDF row for this product+size)"},{"name":"Universal Roof Burgundy","size":"20L","price":590.0,"old":590.0,"status":"confirmed","note":"AUTO (group 'Colours' price)"},{"name":"Universal Roof Burgundy","size":"5L","price":194.24,"old":194.24,"status":"notfound","note":"NOT FOUND (no PDF row for this product+size)"},{"name":"Universal Roof Charcoal","size":"20L","price":590.0,"old":590.0,"status":"confirmed","note":"AUTO (group 'Colours' price)"},{"name":"Universal Roof Charcoal","size":"5L","price":194.24,"old":194.24,"status":"notfound","note":"NOT FOUND (no PDF row for this product+size)"},{"name":"Universal Roof Grey","size":"20L","price":590.0,"old":590.0,"status":"confirmed","note":"AUTO (group 'Colours' price)"},{"name":"Universal Roof Grey","size":"5L","price":194.24,"old":194.24,"status":"notfound","note":"NOT FOUND (no PDF row for this product+size)"},{"name":"Universal Roof Ocean Blue","size":"20L","price":650.0,"old":650.0,"status":"confirmed","note":"AUTO (exact/slash colour match)"},{"name":"Universal Roof Red","size":"20L","price":590.0,"old":590.0,"status":"confirmed","note":"AUTO (group 'Colours' price)"},{"name":"Universal Roof Red","size":"5L","price":194.24,"old":194.24,"status":"notfound","note":"NOT FOUND (no PDF row for this product+size)"},{"name":"Universal Roof T Green","size":"20L","price":650.0,"old":650.0,"status":"confirmed","note":"AUTO (exact/slash colour match)"},{"name":"Universal Roof Terracotta","size":"20L","price":590.0,"old":590.0,"status":"confirmed","note":"AUTO (group 'Colours' price)"},{"name":"Universal Roof Terracotta","size":"5L","price":194.24,"old":194.24,"status":"notfound","note":"NOT FOUND (no PDF row for this product+size)"},{"name":"Varnish Copal","size":"1L","price":84.7,"old":84.7,"status":"confirmed","note":"AUTO (exact/slash colour match)"},{"name":"Varnish Copal","size":"500ML","price":58.0,"old":58.0,"status":"confirmed","note":"AUTO (exact/slash colour match)"},{"name":"Varnish Copal","size":"5L","price":310.0,"old":310.0,"status":"notfound","note":"NOT FOUND (no PDF row for this product+size)"},{"name":"Varnish Dark Oak","size":"1L","price":99.1,"old":99.1,"status":"confirmed","note":"AUTO (group 'Colours' price)"},{"name":"Varnish Dark Oak","size":"500ML","price":64.0,"old":64.0,"status":"confirmed","note":"AUTO (group 'Colours' price)"},{"name":"Varnish Dark Oak","size":"5L","price":340.0,"old":340.0,"status":"notfound","note":"NOT FOUND (no PDF row for this product+size)"},{"name":"Varnish Ebony","size":"1L","price":99.1,"old":99.1,"status":"confirmed","note":"AUTO (group 'Colours' price)"},{"name":"Varnish Ebony","size":"500ML","price":64.0,"old":64.0,"status":"confirmed","note":"AUTO (group 'Colours' price)"},{"name":"Varnish Ebony","size":"5L","price":340.0,"old":340.0,"status":"notfound","note":"NOT FOUND (no PDF row for this product+size)"},{"name":"Varnish Light Oak","size":"1L","price":99.1,"old":99.1,"status":"confirmed","note":"AUTO (group 'Colours' price)"},{"name":"Varnish Light Oak","size":"500ML","price":64.0,"old":64.0,"status":"confirmed","note":"AUTO (group 'Colours' price)"},{"name":"Varnish Light Oak","size":"5L","price":340.0,"old":340.0,"status":"notfound","note":"NOT FOUND (no PDF row for this product+size)"},{"name":"Varnish Mahogany","size":"1L","price":99.1,"old":99.1,"status":"confirmed","note":"AUTO (group 'Colours' price)"},{"name":"Varnish Mahogany","size":"500ML","price":64.0,"old":64.0,"status":"confirmed","note":"AUTO (group 'Colours' price)"},{"name":"Varnish Mahogany","size":"5L","price":340.0,"old":340.0,"status":"notfound","note":"NOT FOUND (no PDF row for this product+size)"},{"name":"Varnish Teak","size":"1L","price":99.1,"old":99.1,"status":"confirmed","note":"AUTO (group 'Colours' price)"},{"name":"Varnish Teak","size":"500ML","price":64.0,"old":64.0,"status":"confirmed","note":"AUTO (group 'Colours' price)"},{"name":"Varnish Teak","size":"5L","price":340.0,"old":340.0,"status":"notfound","note":"NOT FOUND (no PDF row for this product+size)"},{"name":"Varnish Walnut","size":"1L","price":99.1,"old":99.1,"status":"confirmed","note":"AUTO (group 'Colours' price)"},{"name":"Varnish Walnut","size":"500ML","price":64.0,"old":64.0,"status":"confirmed","note":"AUTO (group 'Colours' price)"},{"name":"Varnish Walnut","size":"5L","price":340.0,"old":340.0,"status":"notfound","note":"NOT FOUND (no PDF row for this product+size)"}];
 
+const tbody = document.getElementById('tbody');
+const searchEl = document.getElementById('search');
+const statusEl = document.getElementById('statusFilter');
+const emptyEl = document.getElementById('empty');
+
+function money(v) {
+  if (v === null || v === undefined) return '—';
+  return 'R ' + v.toLocaleString('en-ZA', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+
+function badge(row) {
+  if (row.status === 'changed') return '<span class="badge changed">updated</span>';
+  if (row.status === 'review') return '<span class="badge review">review</span>';
+  if (row.status === 'notfound') return '<span class="badge notfound">no update</span>';
+  if (row.status === 'skipped') return '<span class="badge skipped">variant</span>';
+  return '';
+}
+
+function render() {
+  const q = searchEl.value.trim().toLowerCase();
+  const statusWanted = statusEl.value;
+  const frag = document.createDocumentFragment();
+  let shown = 0;
+
+  for (const row of DATA) {
+    if (statusWanted && row.status !== statusWanted) continue;
+    if (q && !(row.name.toLowerCase().includes(q) || row.size.toLowerCase().includes(q))) continue;
+    shown++;
+    const tr = document.createElement('tr');
+    const oldPriceHtml = (row.status === 'changed' && row.old !== null)
+      ? `<span class="old-price">was ${money(row.old)}</span>` : '';
+    tr.innerHTML = `
+      <td>${row.name}${badge(row)}</td>
+      <td class="size-tag">${row.size}</td>
+      <td class="num"><span class="price">${money(row.price)}</span>${oldPriceHtml}</td>
+    `;
+    if (row.note) tr.title = row.note;
+    frag.appendChild(tr);
+  }
+  tbody.innerHTML = '';
+  tbody.appendChild(frag);
+  emptyEl.style.display = shown === 0 ? 'block' : 'none';
+}
+
+searchEl.addEventListener('input', render);
+statusEl.addEventListener('change', render);
+render();
+</script>
 </body>
 </html>
