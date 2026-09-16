@@ -1,0 +1,1106 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Price List Updater</title>
+<meta name="description" content="Update an existing customer pricelist against a supplier PDF, or build a brand new one from scratch — get a matched Odoo-import Excel back. Runs entirely in your browser." />
+<style>
+  :root {
+    --bg: #0a0b0f;
+    --panel: #14161f;
+    --panel-2: #1a1d29;
+    --border: #262a38;
+    --border-strong: #333850;
+    --text: #f2f3f5;
+    --text-muted: #9aa0ab;
+    --text-dim: #6b7180;
+    --teal: #5eead4;
+    --teal-ink: #063a35;
+    --teal-dim: rgba(94, 234, 212, 0.12);
+    --yellow: #f5c518;
+    --yellow-dim: rgba(245, 197, 24, 0.12);
+    --danger: #f38b8b;
+    --danger-dim: rgba(243, 139, 139, 0.12);
+    --radius: 12px;
+    --radius-sm: 8px;
+    --pill: 999px;
+    --font: -apple-system, "system-ui", "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    --mono: "SF Mono", "Cascadia Code", Consolas, monospace;
+    --shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+    --ease: cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  * { box-sizing: border-box; }
+
+  html, body {
+    margin: 0;
+    padding: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--font);
+  }
+
+  body {
+    min-height: 100vh;
+    padding: 32px 20px 80px;
+  }
+
+  a { color: var(--teal); }
+
+  .wrap {
+    max-width: 980px;
+    margin: 0 auto;
+  }
+
+  /* ---------- header ---------- */
+
+  .app-header {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    margin-bottom: 28px;
+  }
+
+  .app-logo {
+    width: 48px;
+    height: 48px;
+    flex: none;
+    border-radius: 50%;
+    background: var(--yellow);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #1a1200;
+    box-shadow: 0 4px 14px rgba(245, 197, 24, 0.25);
+  }
+
+  .app-logo svg { width: 24px; height: 24px; }
+
+  .app-title h1 {
+    margin: 0;
+    font-size: 20px;
+    font-weight: 700;
+    letter-spacing: -0.01em;
+  }
+
+  .app-title p {
+    margin: 2px 0 0;
+    font-size: 13px;
+    color: var(--text-muted);
+  }
+
+  /* ---------- stepper ---------- */
+
+  .stepper {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-bottom: 24px;
+    overflow-x: auto;
+    padding-bottom: 2px;
+  }
+
+  .step-pill {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 14px 8px 8px;
+    border-radius: var(--pill);
+    border: 1px solid var(--border);
+    background: transparent;
+    color: var(--text-dim);
+    font-size: 13px;
+    font-weight: 600;
+    white-space: nowrap;
+    transition: border-color 0.25s var(--ease), color 0.25s var(--ease), background 0.25s var(--ease);
+  }
+
+  .step-pill .num {
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    background: var(--panel-2);
+    color: var(--text-dim);
+    flex: none;
+    transition: background 0.25s var(--ease), color 0.25s var(--ease);
+  }
+
+  .step-pill.active {
+    border-color: var(--teal);
+    color: var(--text);
+    background: var(--teal-dim);
+  }
+
+  .step-pill.active .num { background: var(--teal); color: var(--teal-ink); }
+
+  .step-pill.done { color: var(--text-muted); }
+  .step-pill.done .num { background: var(--border-strong); color: var(--text); }
+
+  .step-connector {
+    width: 16px;
+    height: 1px;
+    background: var(--border);
+    flex: none;
+  }
+
+  /* ---------- card ---------- */
+
+  .card {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 28px;
+    margin-bottom: 20px;
+    box-shadow: var(--shadow);
+    animation: rise 0.4s var(--ease);
+  }
+
+  @keyframes rise {
+    from { opacity: 0; transform: translateY(8px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .card h2 {
+    margin: 0 0 4px;
+    font-size: 17px;
+    font-weight: 700;
+  }
+
+  .card .card-sub {
+    margin: 0 0 20px;
+    font-size: 13px;
+    color: var(--text-muted);
+  }
+
+  .panel { display: none; }
+  .panel.active { display: block; }
+
+  /* ---------- upload grid ---------- */
+
+  .upload-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+  }
+
+  @media (max-width: 640px) {
+    .upload-grid { grid-template-columns: 1fr; }
+  }
+
+  .dropzone {
+    position: relative;
+    border: 1.5px dashed var(--border-strong);
+    border-radius: var(--radius);
+    padding: 28px 16px;
+    text-align: center;
+    background: var(--panel-2);
+    transition: border-color 0.2s var(--ease), background 0.2s var(--ease), transform 0.15s var(--ease);
+    cursor: pointer;
+  }
+
+  .dropzone:hover { border-color: var(--teal); }
+
+  .dropzone.dragover {
+    border-color: var(--teal);
+    background: var(--teal-dim);
+    transform: scale(1.01);
+  }
+
+  .dropzone.has-file {
+    border-style: solid;
+    border-color: var(--teal);
+    background: var(--teal-dim);
+  }
+
+  .dropzone input[type="file"] {
+    position: absolute;
+    inset: 0;
+    opacity: 0;
+    cursor: pointer;
+  }
+
+  .dz-icon {
+    width: 44px;
+    height: 44px;
+    margin: 0 auto 12px;
+    border-radius: 50%;
+    background: var(--yellow-dim);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--yellow);
+  }
+
+  .dz-icon svg { width: 22px; height: 22px; }
+
+  .dropzone.has-file .dz-icon { background: var(--teal-dim); color: var(--teal); }
+
+  .dz-title {
+    font-size: 14px;
+    font-weight: 600;
+    margin: 0 0 4px;
+  }
+
+  .dz-sub {
+    font-size: 12px;
+    color: var(--text-dim);
+    margin: 0 0 14px;
+  }
+
+  .dz-divider {
+    font-size: 11px;
+    color: var(--text-dim);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    margin: 10px 0;
+  }
+
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    border: none;
+    border-radius: var(--radius-sm);
+    padding: 10px 18px;
+    font-size: 13px;
+    font-weight: 600;
+    font-family: var(--font);
+    cursor: pointer;
+    transition: filter 0.15s var(--ease), transform 0.1s var(--ease), opacity 0.15s var(--ease);
+    position: relative;
+  }
+
+  .btn:active { transform: scale(0.97); }
+
+  .btn-primary { background: var(--teal); color: var(--teal-ink); }
+  .btn-primary:hover { filter: brightness(1.08); }
+  .btn-primary:disabled { opacity: 0.4; cursor: not-allowed; filter: none; }
+
+  .btn-pill { border-radius: var(--pill); }
+
+  .btn-outline {
+    background: transparent;
+    color: var(--text-muted);
+    border: 1px solid var(--border-strong);
+  }
+  .btn-outline:hover { border-color: var(--teal); color: var(--text); }
+
+  .btn-text {
+    background: transparent;
+    color: var(--teal);
+    padding: 6px 4px;
+  }
+  .btn-text:hover { filter: brightness(1.15); }
+
+  .btn-sm { padding: 6px 12px; font-size: 12px; }
+
+  .dz-filename {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    justify-content: center;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text);
+    margin-top: 4px;
+    word-break: break-word;
+  }
+
+  .dz-remove {
+    background: none;
+    border: none;
+    color: var(--text-dim);
+    cursor: pointer;
+    font-size: 15px;
+    line-height: 1;
+    padding: 2px 6px;
+    border-radius: 4px;
+    z-index: 2;
+    position: relative;
+  }
+  .dz-remove:hover { color: var(--danger); }
+
+  .manual-add {
+    margin-top: 16px;
+    text-align: center;
+  }
+
+  .step-actions {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 24px;
+    gap: 12px;
+    flex-wrap: wrap;
+  }
+
+  /* ---------- misc ---------- */
+
+  .hint {
+    font-size: 12px;
+    color: var(--text-dim);
+    line-height: 1.5;
+  }
+
+  .banner {
+    display: flex;
+    gap: 10px;
+    align-items: flex-start;
+    border-radius: var(--radius-sm);
+    padding: 12px 14px;
+    font-size: 13px;
+    line-height: 1.5;
+    margin-bottom: 16px;
+  }
+  .banner-error { background: var(--danger-dim); color: #ffd7d7; border: 1px solid rgba(243, 139, 139, 0.3); }
+  .banner-warn { background: var(--yellow-dim); color: #ffe9a8; border: 1px solid rgba(245, 197, 24, 0.3); }
+  .banner-info { background: var(--teal-dim); color: #c9fff2; border: 1px solid rgba(94, 234, 212, 0.25); }
+
+  .spinner {
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    border: 2px solid rgba(255, 255, 255, 0.25);
+    border-top-color: currentColor;
+    animation: spin 0.7s linear infinite;
+    flex: none;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .loading-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    color: var(--text-muted);
+    font-size: 13px;
+    padding: 10px 0;
+  }
+
+  /* ---------- editable table (PDF review) ---------- */
+
+  .table-scroll {
+    overflow-x: auto;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+  }
+
+  #pdf-rows-table-scroll {
+    max-height: 480px;
+    overflow-y: auto;
+  }
+
+  table.rows-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+    min-width: 520px;
+  }
+
+  table.rows-table th {
+    text-align: left;
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--text-dim);
+    background: var(--panel-2);
+    padding: 10px 12px;
+    position: sticky;
+    top: 0;
+    border-bottom: 1px solid var(--border);
+  }
+
+  table.rows-table td {
+    padding: 8px 12px;
+    border-bottom: 1px solid var(--border);
+    vertical-align: middle;
+  }
+
+  table.rows-table tr:last-child td { border-bottom: none; }
+
+  table.rows-table tr:hover td { background: rgba(255, 255, 255, 0.015); }
+
+  .cell-input {
+    width: 100%;
+    background: transparent;
+    border: 1px solid transparent;
+    border-radius: 6px;
+    color: var(--text);
+    font-family: var(--font);
+    font-size: 13px;
+    padding: 5px 7px;
+  }
+  .cell-input:hover { border-color: var(--border-strong); }
+  .cell-input:focus {
+    outline: none;
+    border-color: var(--teal);
+    background: rgba(94, 234, 212, 0.06);
+  }
+  .cell-input.price-input { width: 100px; text-align: right; font-family: var(--mono); }
+
+  .row-del {
+    background: none;
+    border: none;
+    color: var(--text-dim);
+    cursor: pointer;
+    font-size: 16px;
+    line-height: 1;
+    padding: 4px 6px;
+    border-radius: 6px;
+  }
+  .row-del:hover { color: var(--danger); background: var(--danger-dim); }
+
+  .table-toolbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 12px;
+    gap: 12px;
+    flex-wrap: wrap;
+  }
+
+  .count-chip {
+    font-size: 12px;
+    color: var(--text-muted);
+    background: var(--panel-2);
+    border: 1px solid var(--border);
+    border-radius: var(--pill);
+    padding: 4px 10px;
+  }
+
+  details.unparsed {
+    margin-top: 14px;
+    font-size: 12px;
+    color: var(--text-dim);
+  }
+  details.unparsed summary {
+    cursor: pointer;
+    color: var(--text-muted);
+    padding: 4px 0;
+  }
+  details.unparsed pre {
+    white-space: pre-wrap;
+    word-break: break-word;
+    background: var(--panel-2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    padding: 12px;
+    max-height: 200px;
+    overflow-y: auto;
+    font-family: var(--mono);
+    font-size: 11.5px;
+    line-height: 1.6;
+  }
+
+  /* ---------- stats ---------- */
+
+  .stats-grid {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 10px;
+    margin-bottom: 20px;
+  }
+
+  @media (max-width: 720px) {
+    .stats-grid { grid-template-columns: repeat(2, 1fr); }
+  }
+
+  .stat-card {
+    background: var(--panel-2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    padding: 14px;
+    text-align: left;
+  }
+
+  .stat-card .n {
+    font-size: 22px;
+    font-weight: 700;
+    font-family: var(--mono);
+  }
+
+  .stat-card .l {
+    font-size: 11px;
+    color: var(--text-dim);
+    margin-top: 2px;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+  }
+
+  .stat-card.c-auto .n { color: var(--teal); }
+  .stat-card.c-review .n { color: var(--yellow); }
+  .stat-card.c-notfound .n { color: var(--danger); }
+
+  /* ---------- results toolbar + table ---------- */
+
+  .results-toolbar {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 14px;
+    flex-wrap: wrap;
+  }
+
+  .search-input, .filter-select {
+    background: var(--panel-2);
+    border: 1px solid var(--border);
+    color: var(--text);
+    border-radius: var(--radius-sm);
+    padding: 9px 12px;
+    font-size: 13px;
+    font-family: var(--font);
+  }
+  .search-input { flex: 1; min-width: 160px; }
+  .search-input:focus, .filter-select:focus { outline: none; border-color: var(--teal); }
+
+  .status-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 11px;
+    font-weight: 700;
+    padding: 3px 9px;
+    border-radius: var(--pill);
+    white-space: nowrap;
+  }
+  .status-badge.st-changed { background: var(--teal-dim); color: var(--teal); }
+  .status-badge.st-unchanged { background: rgba(255, 255, 255, 0.06); color: var(--text-muted); }
+  .status-badge.st-review { background: var(--yellow-dim); color: var(--yellow); }
+  .status-badge.st-notfound { background: var(--danger-dim); color: var(--danger); }
+  .status-badge.st-skipped { background: rgba(255, 255, 255, 0.04); color: var(--text-dim); }
+
+  .price-old { color: var(--text-dim); text-decoration: line-through; font-family: var(--mono); font-size: 12px; }
+  .price-new { color: var(--text); font-family: var(--mono); font-weight: 600; }
+  .price-new.up { color: var(--teal); }
+  .note-cell { color: var(--text-dim); font-size: 11.5px; max-width: 320px; }
+
+  .results-scroll { max-height: 560px; overflow-y: auto; }
+
+  .empty-state {
+    text-align: center;
+    padding: 40px 20px;
+    color: var(--text-dim);
+    font-size: 13px;
+  }
+
+  /* ---------- mode select ---------- */
+  .mode-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    margin-bottom: 24px;
+  }
+  @media (max-width: 640px) { .mode-grid { grid-template-columns: 1fr; } }
+  .mode-card {
+    text-align: left;
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 24px;
+    cursor: pointer;
+    box-shadow: var(--shadow);
+    transition: border-color 0.2s var(--ease), transform 0.15s var(--ease);
+    font-family: var(--font);
+    color: var(--text);
+  }
+  .mode-card:hover { border-color: var(--teal); transform: translateY(-2px); }
+  .mode-card .mode-icon {
+    width: 40px; height: 40px; border-radius: 50%;
+    background: var(--teal-dim); color: var(--teal);
+    display: flex; align-items: center; justify-content: center;
+    margin-bottom: 14px;
+  }
+  .mode-card .mode-icon svg { width: 20px; height: 20px; }
+  .mode-card h3 { margin: 0 0 6px; font-size: 15px; font-weight: 700; }
+  .mode-card p { margin: 0; font-size: 13px; color: var(--text-muted); line-height: 1.5; }
+
+  .mode-back {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: none;
+    border: none;
+    color: var(--text-dim);
+    font-size: 12.5px;
+    cursor: pointer;
+    padding: 4px 0;
+    margin-bottom: 14px;
+    font-family: var(--font);
+  }
+  .mode-back:hover { color: var(--teal); }
+
+  /* ---------- build-new-pricelist mode ---------- */
+  .field-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    margin-bottom: 20px;
+  }
+  @media (max-width: 640px) { .field-grid { grid-template-columns: 1fr; } }
+  .field label {
+    display: block;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text-muted);
+    margin-bottom: 6px;
+  }
+  .field input[type="text"] {
+    width: 100%;
+    background: var(--panel-2);
+    border: 1px solid var(--border);
+    color: var(--text);
+    border-radius: var(--radius-sm);
+    padding: 10px 12px;
+    font-size: 13px;
+    font-family: var(--font);
+  }
+  .field input[type="text"]:focus { outline: none; border-color: var(--teal); }
+
+  .split-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1.2fr);
+    gap: 18px;
+    align-items: start;
+  }
+  @media (max-width: 860px) { .split-grid { grid-template-columns: 1fr; } }
+
+  .pdf-viewer-toolbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    margin-bottom: 10px;
+  }
+  .zoom-controls { display: flex; align-items: center; gap: 6px; }
+  .zoom-controls button {
+    width: 26px; height: 26px;
+    border-radius: 6px;
+    border: 1px solid var(--border-strong);
+    background: var(--panel-2);
+    color: var(--text);
+    cursor: pointer;
+    font-size: 14px;
+    line-height: 1;
+  }
+  .zoom-controls button:hover { border-color: var(--teal); color: var(--teal); }
+  .zoom-pct { font-size: 11.5px; color: var(--text-dim); min-width: 38px; text-align: center; }
+
+  .pdf-pages {
+    overflow: auto;
+    max-height: 640px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    background: var(--panel-2);
+    padding: 12px;
+  }
+  .pdf-page-wrap { margin-bottom: 14px; }
+  .pdf-page-wrap:last-child { margin-bottom: 0; }
+  .pdf-page-label { font-size: 11px; color: var(--text-dim); margin: 0 0 4px; }
+  .pdf-page-canvas {
+    display: block;
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    background: #fff;
+  }
+
+  .b-table-wrap { max-height: 640px; overflow-y: auto; }
+  table.rows-table.b-table td { vertical-align: top; }
+  table.rows-table.b-table input.cell-input { font-size: 12.5px; }
+  .b-pack-input { width: 72px !important; text-align: center; font-family: var(--mono); }
+  .b-price-input { width: 88px !important; text-align: right; font-family: var(--mono); }
+
+  .method-hint {
+    font-size: 11px;
+    color: var(--text-dim);
+    margin-top: 2px;
+  }
+
+  /* ---------- footer ---------- */
+
+  .app-footer {
+    max-width: 980px;
+    margin: 40px auto 0;
+    padding-top: 20px;
+    border-top: 1px solid var(--border);
+    font-size: 12px;
+    color: var(--text-dim);
+    line-height: 1.6;
+    text-align: center;
+  }
+
+  .app-footer b { color: var(--text-muted); }
+
+  .sr-only {
+    position: absolute;
+    width: 1px; height: 1px;
+    padding: 0; margin: -1px;
+    overflow: hidden;
+    clip: rect(0,0,0,0);
+    white-space: nowrap;
+    border: 0;
+  }
+
+  ::selection { background: var(--teal-dim); color: var(--text); }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="app-header">
+    <div class="app-logo" aria-hidden="true">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M3 3v18h18"></path>
+        <path d="M18.7 8 12 14.7l-3-3-4.7 4.7"></path>
+      </svg>
+    </div>
+    <div class="app-title">
+      <h1>Price List Updater</h1>
+      <p>Update an existing pricelist, or build a brand new one from scratch — get a matched Odoo import Excel back.</p>
+    </div>
+  </header>
+
+  <!-- ---------------- MODE SELECTOR ---------------- -->
+  <section id="mode-selector">
+    <div class="mode-grid">
+      <button type="button" class="mode-card" id="mode-card-update">
+        <div class="mode-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M21 12a9 9 0 1 1-2.6-6.3"></path>
+            <path d="M21 3v6h-6"></path>
+          </svg>
+        </div>
+        <h3>Update existing pricelist</h3>
+        <p>I already have this customer's Odoo pricelist export. Match a new supplier price-update PDF against it and get the updated Excel back.</p>
+      </button>
+      <button type="button" class="mode-card" id="mode-card-build">
+        <div class="mode-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M12 5v14"></path>
+            <path d="M5 12h14"></path>
+          </svg>
+        </div>
+        <h3>Build new pricelist</h3>
+        <p>New customer, no existing export yet. Upload their price-list PDF (typed or handwritten) and build a fresh Odoo import file from scratch.</p>
+      </button>
+    </div>
+  </section>
+
+  <div id="global-banner-slot"></div>
+
+  <!-- ================ MODE: UPDATE EXISTING PRICELIST ================ -->
+  <div id="mode-update-wrap" hidden>
+  <button type="button" class="mode-back" data-back-to-selector>
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"></path></svg>
+    Change mode
+  </button>
+
+  <nav class="stepper" aria-label="Progress">
+    <div class="step-pill active" id="step-pill-1" data-step="1"><span class="num">1</span><span>Upload</span></div>
+    <div class="step-connector"></div>
+    <div class="step-pill" id="step-pill-2" data-step="2"><span class="num">2</span><span>Review prices</span></div>
+    <div class="step-connector"></div>
+    <div class="step-pill" id="step-pill-3" data-step="3"><span class="num">3</span><span>Matched result</span></div>
+  </nav>
+
+  <!-- ---------------- STEP 1: UPLOAD ---------------- -->
+  <section class="panel active" id="panel-1" aria-labelledby="panel-1-title">
+    <div class="card">
+      <h2 id="panel-1-title">Upload files</h2>
+      <p class="card-sub">Both files stay in this browser tab — nothing is uploaded anywhere.</p>
+
+      <div class="upload-grid">
+        <div class="dropzone" id="dz-pdf" tabindex="0" role="button" aria-label="Upload price update PDF">
+          <input type="file" id="file-pdf" accept="application/pdf" aria-hidden="true" tabindex="-1" />
+          <div class="dz-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M12 3v12"></path>
+              <path d="m7 10 5 5 5-5"></path>
+              <path d="M5 21h14"></path>
+            </svg>
+          </div>
+          <p class="dz-title" id="dz-pdf-title">Drop price update PDF here</p>
+          <p class="dz-sub">Typed PDF with a real text layer (not a scanned image)</p>
+          <div class="dz-divider">or</div>
+          <span class="btn btn-primary btn-pill btn-sm" style="pointer-events:none;">Choose File</span>
+          <div class="dz-filename" id="dz-pdf-filename" hidden></div>
+        </div>
+
+        <div class="dropzone" id="dz-xlsx" tabindex="0" role="button" aria-label="Upload pricelist Excel file">
+          <input type="file" id="file-xlsx" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" aria-hidden="true" tabindex="-1" />
+          <div class="dz-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M12 3v12"></path>
+              <path d="m7 10 5 5 5-5"></path>
+              <path d="M5 21h14"></path>
+            </svg>
+          </div>
+          <p class="dz-title" id="dz-xlsx-title">Drop pricelist Excel here</p>
+          <p class="dz-sub">The Odoo pricelist export (.xlsx) for this customer</p>
+          <div class="dz-divider">or</div>
+          <span class="btn btn-primary btn-pill btn-sm" style="pointer-events:none;">Choose File</span>
+          <div class="dz-filename" id="dz-xlsx-filename" hidden></div>
+        </div>
+      </div>
+
+      <div class="step-actions">
+        <p class="hint">Step 1 of 3 — both files are needed to continue.</p>
+        <button class="btn btn-primary" id="btn-extract" disabled>Extract prices from PDF →</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ---------------- STEP 2: REVIEW EXTRACTED PDF ROWS ---------------- -->
+  <section class="panel" id="panel-2" aria-labelledby="panel-2-title">
+    <div class="card">
+      <h2 id="panel-2-title">Review extracted prices</h2>
+      <p class="card-sub">This is exactly what will be matched against the Excel — fix anything that looks wrong before continuing.</p>
+
+      <div class="table-toolbar">
+        <span class="count-chip" id="pdf-row-count">0 rows</span>
+        <button class="btn btn-outline btn-sm" id="btn-add-row">+ Add row manually</button>
+      </div>
+
+      <div class="table-scroll" id="pdf-rows-table-scroll">
+        <table class="rows-table" id="pdf-rows-table">
+          <thead>
+            <tr>
+              <th style="width:60%;">Label (from PDF)</th>
+              <th style="width:25%;">Price</th>
+              <th style="width:15%;"></th>
+            </tr>
+          </thead>
+          <tbody id="pdf-rows-tbody"></tbody>
+        </table>
+      </div>
+
+      <details class="unparsed" id="unparsed-details" hidden>
+        <summary id="unparsed-summary">0 lines in the PDF weren't recognized as price rows</summary>
+        <pre id="unparsed-text"></pre>
+      </details>
+
+      <div class="step-actions">
+        <button class="btn btn-outline" id="btn-back-1">← Back</button>
+        <button class="btn btn-primary" id="btn-match">Match against Excel →</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ---------------- STEP 3: RESULTS ---------------- -->
+  <section class="panel" id="panel-3" aria-labelledby="panel-3-title">
+    <div class="card">
+      <h2 id="panel-3-title" id="results-title">Matched result</h2>
+      <p class="card-sub" id="results-sub">Review the changes, then download the updated Excel.</p>
+
+      <div class="stats-grid" id="stats-grid"></div>
+
+      <div class="results-toolbar">
+        <input type="text" class="search-input" id="results-search" placeholder="Search product name…" />
+        <select class="filter-select" id="results-filter">
+          <option value="all">All statuses</option>
+          <option value="changed">Price changed</option>
+          <option value="unchanged">Confirmed / unchanged</option>
+          <option value="review">Needs review</option>
+          <option value="notfound">Not found in PDF</option>
+          <option value="skipped">Skipped variant</option>
+        </select>
+      </div>
+
+      <div class="table-scroll results-scroll">
+        <table class="rows-table" id="results-table">
+          <thead>
+            <tr>
+              <th style="width:38%;">Product</th>
+              <th style="width:12%;">Old price</th>
+              <th style="width:12%;">New price</th>
+              <th style="width:13%;">Status</th>
+              <th style="width:25%;">Note</th>
+            </tr>
+          </thead>
+          <tbody id="results-tbody"></tbody>
+        </table>
+        <div class="empty-state" id="results-empty" hidden>No rows match your search / filter.</div>
+      </div>
+
+      <div class="step-actions">
+        <button class="btn btn-outline" id="btn-back-2">← Back</button>
+        <div style="display:flex; gap:10px; flex-wrap:wrap;">
+          <button class="btn btn-outline" id="btn-download-report">Download browsable report (.html)</button>
+          <button class="btn btn-primary" id="btn-download-xlsx">⬇ Download updated Excel</button>
+        </div>
+      </div>
+    </div>
+  </section>
+  </div>
+  <!-- ================ /MODE: UPDATE EXISTING PRICELIST ================ -->
+
+  <!-- ================ MODE: BUILD NEW PRICELIST ================ -->
+  <div id="mode-build-wrap" hidden>
+  <button type="button" class="mode-back" data-back-to-selector>
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"></path></svg>
+    Change mode
+  </button>
+
+  <nav class="stepper" aria-label="Progress">
+    <div class="step-pill active" id="b-step-pill-1" data-step="1"><span class="num">1</span><span>Customer &amp; PDF</span></div>
+    <div class="step-connector"></div>
+    <div class="step-pill" id="b-step-pill-2" data-step="2"><span class="num">2</span><span>Transcribe rows</span></div>
+    <div class="step-connector"></div>
+    <div class="step-pill" id="b-step-pill-3" data-step="3"><span class="num">3</span><span>Result</span></div>
+  </nav>
+
+  <!-- ---------------- STEP B1: CUSTOMER + PDF ---------------- -->
+  <section class="panel active" id="panel-b1" aria-labelledby="panel-b1-title">
+    <div class="card">
+      <h2 id="panel-b1-title">Customer details &amp; price list PDF</h2>
+      <p class="card-sub">Works with typed PDFs and scanned/handwritten ones — you'll be able to zoom into the pages and transcribe by hand on the next step.</p>
+
+      <div class="field-grid">
+        <div class="field">
+          <label for="b-customer-name">Customer name</label>
+          <input type="text" id="b-customer-name" placeholder="e.g. Kelly's Hardware" autocomplete="off" />
+        </div>
+        <div class="field">
+          <label for="b-account-number">Account number</label>
+          <input type="text" id="b-account-number" placeholder="e.g. KK038" autocomplete="off" />
+        </div>
+      </div>
+
+      <div class="dropzone" id="b-dz-pdf" tabindex="0" role="button" aria-label="Upload customer price list PDF">
+        <input type="file" id="b-file-pdf" accept="application/pdf" aria-hidden="true" tabindex="-1" />
+        <div class="dz-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M12 3v12"></path>
+            <path d="m7 10 5 5 5-5"></path>
+            <path d="M5 21h14"></path>
+          </svg>
+        </div>
+        <p class="dz-title" id="b-dz-pdf-title">Drop the customer's price list PDF here</p>
+        <p class="dz-sub">Typed, scanned, or handwritten — any PDF works</p>
+        <div class="dz-divider">or</div>
+        <span class="btn btn-primary btn-pill btn-sm" style="pointer-events:none;">Choose File</span>
+        <div class="dz-filename" id="b-dz-pdf-filename" hidden></div>
+      </div>
+
+      <div class="step-actions">
+        <p class="hint">Step 1 of 3 — customer name, account number, and the PDF are all needed to continue.</p>
+        <button class="btn btn-primary" id="b-btn-continue" disabled>Open PDF →</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ---------------- STEP B2: TRANSCRIBE / REVIEW ROWS ---------------- -->
+  <section class="panel" id="panel-b2" aria-labelledby="panel-b2-title">
+    <div class="card">
+      <h2 id="panel-b2-title">Transcribe every row</h2>
+      <p class="card-sub" id="panel-b2-sub">Zoom into the pages on the left to read (or re-verify any handwritten price), and fill in the table on the right. Nothing is matched until you click Continue.</p>
+
+      <div class="split-grid">
+        <div class="pdf-viewer">
+          <div class="pdf-viewer-toolbar">
+            <span class="count-chip" id="b-page-count">0 pages</span>
+            <div class="zoom-controls">
+              <button type="button" id="b-zoom-out" aria-label="Zoom out">−</button>
+              <span class="zoom-pct" id="b-zoom-pct">140%</span>
+              <button type="button" id="b-zoom-in" aria-label="Zoom in">+</button>
+            </div>
+          </div>
+          <div class="pdf-pages" id="b-pdf-pages"></div>
+        </div>
+
+        <div>
+          <div class="table-toolbar">
+            <span class="count-chip" id="b-row-count">0 rows</span>
+            <button class="btn btn-outline btn-sm" id="b-btn-add-row">+ Add row manually</button>
+          </div>
+          <div class="table-scroll b-table-wrap" id="b-rows-table-scroll">
+            <table class="rows-table b-table" id="b-rows-table">
+              <thead>
+                <tr>
+                  <th style="width:34%;">Product / colour</th>
+                  <th style="width:14%;">Pack</th>
+                  <th style="width:18%;">Printed price</th>
+                  <th style="width:18%;">Special price</th>
+                  <th style="width:8%;"></th>
+                </tr>
+              </thead>
+              <tbody id="b-rows-tbody"></tbody>
+            </table>
+          </div>
+          <p class="hint" style="margin-top:10px;">
+            Tip: for a row that covers every shade of a line at one price, type <b>Colours</b> as the colour word
+            (e.g. "High Gloss Enamel Colours") — it'll be expanded into every colour that line has in your Odoo
+            catalog. For a row like "White / Cream / Brown", it's split into one line per colour automatically.
+          </p>
+        </div>
+      </div>
+
+      <div class="step-actions">
+        <button class="btn btn-outline" id="b-btn-back-1">← Back</button>
+        <button class="btn btn-primary" id="b-btn-process">Match against Odoo catalog →</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ---------------- STEP B3: RESULT ---------------- -->
+  <section class="panel" id="panel-b3" aria-labelledby="panel-b3-title">
+    <div class="card">
+      <h2 id="panel-b3-title">New pricelist ready</h2>
+      <p class="card-sub" id="b-results-sub">Review the flagged rows before importing into Odoo, then download.</p>
+
+      <div class="stats-grid" id="b-stats-grid"></div>
+
+      <div class="results-toolbar">
+        <input type="text" class="search-input" id="b-results-search" placeholder="Search product name…" />
+        <select class="filter-select" id="b-results-filter">
+          <option value="all">All statuses</option>
+          <option value="matched">Matched</option>
+          <option value="corrected">Name corrected</option>
+          <option value="generated">Generated (Colours)</option>
+          <option value="split">Split (slash)</option>
+          <option value="review">Needs review</option>
+          <option value="notfound">Not found</option>
+        </select>
+      </div>
+
+      <div class="table-scroll results-scroll">
+        <table class="rows-table" id="b-results-table">
+          <thead>
+            <tr>
+              <th style="width:45%;">Product</th>
+              <th style="width:12%;">Price</th>
+              <th style="width:15%;">Status</th>
+              <th style="width:28%;">Note</th>
+            </tr>
+          </thead>
+          <tbody id="b-results-tbody"></tbody>
+        </table>
+        <div class="empty-state" id="b-results-empty" hidden>No rows match your search / filter.</div>
+      </div>
+
+      <div class="step-actions">
+        <button class="btn btn-outline" id="b-btn-back-2">← Back</button>
+        <button class="btn btn-primary" id="b-btn-download-xlsx">⬇ Download new pricelist Excel</button>
+      </div>
+    </div>
+  </section>
+  </div>
+  <!-- ================ /MODE: BUILD NEW PRICELIST ================ -->
+
+</div>
+
+<footer class="app-footer">
+  <p><b>Nothing leaves this browser.</b> The PDF and Excel are read, matched, and rewritten entirely on your device using client-side JavaScript — no file is ever uploaded to a server.</p>
+  <p>Price List Updater — built for Olympic Paints pricelist updates. Handles both updating an existing customer's pricelist and building a brand new one from scratch.</p>
+</footer>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="./catalog-data.js"></script>
+<script src="./catalog-match.js"></script>
+<script type="module" src="./app.js"></script>
+
+</body>
+</html>
